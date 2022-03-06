@@ -42,6 +42,13 @@ df.columns = INIT_HEADER
 print(df[1:5])
 
 ##########################################################################
+# TODO - Add logic to remove/change data points from the starting dataset.
+# Based on desired quality, remove/change certain data points.
+# Actions List:
+# 1) ...
+# 2) ...
+
+##########################################################################
 # TODO - Do work necessary to print a Data Quality Report before cleaning.
 # Create an organized data set summary for the console using a data frame.
 report1 = DataQualityReport()
@@ -60,13 +67,6 @@ for thisLabel in INIT_HEADER:  # for each column, report basic stats
 
 print("DataQualityReport - 1/2")
 print(report1.to_string())
-
-##########################################################################
-# TODO - Add logic to remove data points from the starting dataset.
-# Based on desired quality, remove certain data points.
-# Actions List:
-# 1) ...
-# 2) ...
 
 
 ##########################################################################
