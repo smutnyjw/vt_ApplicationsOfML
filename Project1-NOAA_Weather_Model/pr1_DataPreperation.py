@@ -81,62 +81,59 @@ targetVariables = ['PRECIPFLAG', 'PRECIPAMT', 'NEXTDAYPRECIPFLAG',
                    'NEXTDAYPRECIPAMT']
 
 newHeader = baseColumns + elementTypes.tolist() + targetVariables
-print("New Headers:")
-print(newHeader)
+#print("New Headers:")
+#print(newHeader)
 
-# 2) Isolate a single day's total events
+# 2) Isolate a single day's total events.
 daysMeasured = df.Date.unique()
-isoDaysEvents = df.loc[df['Date'] == daysMeasured[0]]
+
+# TODO - When ready, create another loop to loop over all unique days below.
+oneDayEvents = df.loc[df['Date'] == daysMeasured[0]]
 print("Example isoDaysEvents:")
-print(isoDaysEvents)
+print(oneDayEvents)
 
 # 3) Summarize the day's events into a single entry
-#       Create a blank entry
+#       Create a blank entry.
 keys = newHeader
 blankValues = [0] * len(newHeader)
 entry = dict(zip(keys, blankValues))
-print("Blank Entry pre-processing")
-print(entry)
+#print("Blank Entry pre-processing")
+#print(entry)
 
-#       Fill out a day's summary from each datapoint found in the original
-#       dataset.
-
-#   Loop through each datapoint on a particular day. Find what part of the
-#   dictionary the datapoint's ELEMENT corresponds too. Do math based on that
-#   ELEMENT value.
-
-# TODO - When ready, create another loop to loop over all unique days.
-numEntries = len(isoDaysEvents.index)
+# 4) Loop through each datapoint on a particular day. Find what part of the
+#       dictionary the datapoint's ELEMENT corresponds too. Do math based on
+#       that ELEMENT value.
+numEntries = len(oneDayEvents.index)
 for i in range(numEntries):
-    entryList = isoDaysEvents.loc[i, :].values.tolist()
+    entryList = oneDayEvents.loc[i, :].values.tolist()
     # TODO - ^^^ Maybe make 'entryList' a map of the keys equal to initial
-    #  'header'?
-    print(i)
-    print(entryList)
+    #  'header' to simply value accessing and placement?
+    #print(i)
+    #print(entryList)
     entry['Date'] = entryList[1]
     element = entryList[2]
 
     # SWITCH statement to process the ELEMENT + VALUE
     if element == 'TMAX':
         entry[element] = entryList[3]
-        print('TempMax was ' + str(entryList[3]))
+        #print('TempMax was ' + str(entryList[3]))
     elif element == 'PRCP':
         entry[element] = entryList[3]
-        print('Precipitation was ' + str(entryList[3]))
+        #print('Precipitation was ' + str(entryList[3]))
     elif element == 'SNOW':
         entry[element] = entryList[3]
-        print('Snow fall was ' + str(entryList[3]))
+        #print('Snow fall was ' + str(entryList[3]))
     #TODO - Add more 'elif' statements for the rest of the ELEMENT/VALUE pairs.
     else:
         print('Found element ' + str(entryList[2]))
 
-    print('Resulting Single Day Entry')
-
+print('Resulting Single Day Entry')
 df_entry = pandas.DataFrame([entry])
 print(df_entry)
 
 # 4) Add a new TOTAL DAY entry of weather events in a data frame.
 df_dataSummary = pandas.DataFrame(columns=newHeader)
 df_dataSummary = pandas.concat([df_dataSummary, df_entry], ignore_index=True)
+print('Resulting Dataframe with ONLY single day summaries.')
 print(df_dataSummary)
 
