@@ -2,13 +2,24 @@
 #   File:   pr1_DataPreperation.py
 #   Name:   John Smutny
 #   Course: ECE-5984: Applications of Machine Learning
-#   Date:   03/01/2022
+#   Date:   03/05/2022
 #   Description:
 #       For Project1; perform initial data preparation to get NOAA provided
 #       data into a usable state to model.
 #
 #   Readme:
 #   https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/by_station/readme-by_station.txt
+#
+#   Can:
+#       Read in a csv, create an initial dataframe of data with headers.
+#       Identify every unique Day and process some ELEMENT possibilities into
+#           a single list. Then place that list into a resulting dataframe.
+#
+#   Cannot:
+#       'DataQualityReport.py' lib file cannot handle string entries.
+#       Publish a DataQualityReport for initial or data summary dataframe.
+#       End Goal headers do not contain units.
+#       Process all possible ELEMENT values for an unique Day's events
 ##########################################################################
 
 import pandas
@@ -16,7 +27,7 @@ import numpy as np
 from Libraries.DataExploration.DataQualityReport import DataQualityReport
 
 #####################################
-# Initial loading of headerl-less data and adding a header
+# Initial loading of header-less data and adding a header
 #   Date = yyyymmdd
 #   OBS-Time = hhmm
 
@@ -31,6 +42,24 @@ df = pandas.read_csv(filename, header=None)
 df.columns = header
 
 print(df[1:5])
+
+##########################################################################
+# TODO - Do work necessary to print a Data Quality Report before cleaning.
+# Create an organized data set summary for the console using a data frame.
+report1 = DataQualityReport()
+
+for thisLabel in header:  # for each column, report basic stats
+    if thisLabel == 'Date':
+        print('only do Date col for now')
+        thisCol = df[thisLabel]
+        report1.addCol(thisLabel, thisCol)
+    else:
+        # TODO - Figure how to stop Str from being read in DataQualityReport
+        continue
+
+
+print(report1.to_string())
+
 
 ##########################################################################
 # TODO - Add logic to remove data points from the starting dataset.
@@ -51,7 +80,7 @@ elementTypes = df.Element.unique()
 targetVariables = ['PRECIPFLAG', 'PRECIPAMT', 'NEXTDAYPRECIPFLAG',
                    'NEXTDAYPRECIPAMT']
 
-newHeader = baseColumns +elementTypes.tolist() + targetVariables
+newHeader = baseColumns + elementTypes.tolist() + targetVariables
 print("New Headers:")
 print(newHeader)
 
@@ -64,7 +93,7 @@ print(isoDaysEvents)
 # 3) Summarize the day's events into a single entry
 #       Create a blank entry
 keys = newHeader
-blankValues = [0]*len(newHeader)
+blankValues = [0] * len(newHeader)
 entry = dict(zip(keys, blankValues))
 print("Blank Entry pre-processing")
 print(entry)
@@ -76,9 +105,12 @@ print(entry)
 #   dictionary the datapoint's ELEMENT corresponds too. Do math based on that
 #   ELEMENT value.
 
+# TODO - When ready, create another loop to loop over all unique days.
 numEntries = len(isoDaysEvents.index)
 for i in range(numEntries):
     entryList = isoDaysEvents.loc[i, :].values.tolist()
+    # TODO - ^^^ Maybe make 'entryList' a map of the keys equal to initial
+    #  'header'?
     print(i)
     print(entryList)
     entry['Date'] = entryList[1]
@@ -86,25 +118,25 @@ for i in range(numEntries):
 
     # SWITCH statement to process the ELEMENT + VALUE
     if element == 'TMAX':
+        entry[element] = entryList[3]
         print('TempMax was ' + str(entryList[3]))
     elif element == 'PRCP':
+        entry[element] = entryList[3]
         print('Precipitation was ' + str(entryList[3]))
+    elif element == 'SNOW':
+        entry[element] = entryList[3]
+        print('Snow fall was ' + str(entryList[3]))
+    #TODO - Add more 'elif' statements for the rest of the ELEMENT/VALUE pairs.
     else:
         print('Found element ' + str(entryList[2]))
 
+    print('Resulting Single Day Entry')
 
+df_entry = pandas.DataFrame([entry])
+print(df_entry)
 
-##########################################################################
-# TODO - Once an 'daysSummary' is finished, append to a new dataframe
-# ...) Add a new TOTAL DAY entry of weather events in a data frame.
-# df_singleDay = pandas.DataFrame(columns=newHeader)
-# print(df_singleDay.head())
-# df_singleDay.loc[len(df_singleDay)] = entry
-# print(df_singleDay[len(df_singleDay)])
+# 4) Add a new TOTAL DAY entry of weather events in a data frame.
+df_dataSummary = pandas.DataFrame(columns=newHeader)
+df_dataSummary = pandas.concat([df_dataSummary, df_entry], ignore_index=True)
+print(df_dataSummary)
 
-#####################################
-
-#   Need to insert new columns for each element
-
-# for n in daysMeasured:
-#    entry = df.loc[df['Date'] == n]
