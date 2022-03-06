@@ -1,0 +1,17 @@
+########################################################################
+Organized By:   John Smutny
+Author:         Various
+
+Group of Libraries archeived during various uses of python that
+    should act as a reference to standardize code re-use.
+
+Libraries
+    DataExploration:    Common functions to perform statistical analysis
+                           and aid in the initial steps of a Machine
+                           Learning model. Includes functions to...
+                            1) Generate a Data Quality Report
+                            2) For covariance matrices. Use Pandas module data
+                                frame built in functions.
+                            3) For correlation matrices. Use Pandas module data
+                                frame built in functions.
+########################################################################
