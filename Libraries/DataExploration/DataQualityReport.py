@@ -20,6 +20,10 @@
 #
 #       2) Add ability to publish DataQualityReport as a csv.
 #
+#       3) '.quickDQR()' fct. Test Case: used 90% of the time to make a data
+#       quality report from a standard dataFrame. This would combine the
+#       .addCol fct and the loop used in-code. WOULD NOT print the DQR though.
+#
 #   Parameters:
 #       statsdf data frame summarizing the Data Quality Report from a dataset.
 ############################################################################
@@ -51,12 +55,24 @@ class DataQualityReport:
         cardinalityV = len(data.unique())
         n_missing = data.isnull().sum()
 
-        # Only process columns of data that are 1) Numeric & 2) All have values.
-        if type(data[0]) == str:
+        # Check to ensure that mathematical methods can work on data.
+        #TODO - Refine loop to account for [0] index being null
+        numeric = True
+        for entry in data:
+            if type(entry) == str:
+                numeric = False
+                break
+            elif type(entry) is None:
+                print("value indexed was NULL. Look for the type of the next "
+                      "one")
+                continue
+
+        # Only process columns of data that are NUMERIC.
+        if not numeric:
             # Data is a string type. Do not perform mathematical operations.
             print("WARN: DataQualityReport.addCol: Entered data is not a "
                   "numeric type. Setting relevant dataQuality values to zero")
-            REPLACEMENT_VALUE = "NA"
+            REPLACEMENT_VALUE = "*"
             meanV = REPLACEMENT_VALUE
             medianV = REPLACEMENT_VALUE
             modeV = REPLACEMENT_VALUE

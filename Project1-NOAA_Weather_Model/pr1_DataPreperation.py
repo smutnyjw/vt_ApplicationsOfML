@@ -10,6 +10,11 @@
 #   Readme:
 #   https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/by_station/readme-by_station.txt
 #
+#   Next Steps:
+#   1) Make 'quickDQR()' fct. Replace in here.
+#   2) Only extract CORE5 data headers in original dataframe.
+#   3) (offline) Make data edit suggestions for next meeting.
+#
 #   Can:
 #       Read in a csv, create an initial dataframe of data with headers.
 #       Identify every unique Day and process some ELEMENT possibilities into
@@ -32,14 +37,26 @@ from vt_ApplicationsOfML.Libraries.DataExploration.DataQualityReport import \
 # Initial loading of header-less data and adding a header
 #   Date = yyyymmdd
 #   OBS-Time = hhmm
-
+FILENAME = 'C:/Data/USW00013880-Test.csv'
 INIT_HEADER = ['ID', 'Date', 'Element', 'Value', 'MeasurementFlag',
                'QualityFlag', 'SourceFlag', 'OBS-Time']
-filename = 'C:/Data/USW00013880-Test.csv'
-df = pandas.read_csv(filename, header=None)
+df = pandas.read_csv(FILENAME, header=None)
 df.columns = INIT_HEADER
-
 print(df[1:5])
+
+#####################################
+# Establish user settings for the program, dataframe headers, etc
+MODEL_VERSION = 1
+
+BASE_COLUMNS = ['Date']
+CORE5_FEATURES = ['PRCP', 'SNOW', 'SNWD', 'TMAX', 'TMIN']
+ELEMENT_TYPES = df.Element.unique()
+TARGET_VARIABLES = ['PRECIPFLAG', 'PRECIPAMT', 'NEXTDAYPRECIPFLAG',
+                    'NEXTDAYPRECIPAMT']
+
+CORE5_HEADER = BASE_COLUMNS + CORE5_FEATURES + TARGET_VARIABLES
+DETAILED_HEADER = BASE_COLUMNS + ELEMENT_TYPES.tolist() + TARGET_VARIABLES
+
 
 ##########################################################################
 # TODO - Add logic to remove/change data points from the starting dataset.
@@ -53,12 +70,15 @@ print(df[1:5])
 # Create an organized data set summary for the console using a data frame.
 report1 = DataQualityReport()
 
+#print(type(df.ID.loc[0]))
+#print(type(df.MeasurementFlag.loc[0]))
+#print(type(df.QualityFlag.loc[0]))
+
 for thisLabel in INIT_HEADER:  # for each column, report basic stats
     if thisLabel == 'MeasurementFlag' \
-            or thisLabel == 'QualityFlag' \
-            or thisLabel == 'SourceFlag':
+            or thisLabel == 'QualityFlag':
         print('WARN: DataQualityReport.py cannot process label = ' + thisLabel)
-        # TODO - 'DataQualityReport.py' cannot process 'nan' values.
+        # TODO - 'DataQualityReport.py' cannot process [0] index 'nan' values.
         #  Clean data before this step? (fill in nan, replace categorical chars)
         continue
     else:
@@ -75,16 +95,15 @@ print(report1.to_string())
 #   that day.
 
 # 1) Create final Dataframe header, define features and target variables.
-baseColumns = ['Date']
-elementTypes = df.Element.unique()
-targetVariables = ['PRECIPFLAG', 'PRECIPAMT', 'NEXTDAYPRECIPFLAG',
-                   'NEXTDAYPRECIPAMT']
+if MODEL_VERSION == 1:
+    NEW_HEADER = CORE5_HEADER
+else:
+    NEW_HEADER = DETAILED_HEADER
 
-DETAILED_HEADER = baseColumns + elementTypes.tolist() + targetVariables
 # print("New Headers:")
-# print(DETAILED_HEADER)
+# print(NEW_HEADER)
 
-# 2) Isolate a single day's total events.
+# 2) Isolate a single day's total events into a dictionary.
 daysMeasured = df.Date.unique()
 
 # TODO - When ready, create another loop to loop over all unique days below.
@@ -94,8 +113,8 @@ print(oneDayEvents)
 
 # 3) Summarize the day's events into a single entry
 #       Create a blank entry.
-keys = DETAILED_HEADER
-blankValues = [0] * len(DETAILED_HEADER)
+keys = NEW_HEADER
+blankValues = [0] * len(NEW_HEADER)
 entry = dict(zip(keys, blankValues))
 # print("Blank Entry pre-processing")
 # print(entry)
@@ -123,6 +142,12 @@ for i in range(numEntries):
     elif element == 'SNOW':
         entry[element] = entryList[3]
         # print('Snow fall was ' + str(entryList[3]))
+    elif element == 'TMIN':
+        entry[element] = entryList[3]
+        # print('TempMin was ' + str(entryList[3]))
+    elif element == 'SNWD':
+        entry[element] = entryList[3]
+        # print('Snow depth was ' + str(entryList[3]))
     # TODO - Add more 'elif' statements for the rest of the ELEMENT/VALUE pairs.
     else:
         print('Found element ' + str(entryList[2]))
@@ -132,7 +157,7 @@ df_entry = pandas.DataFrame([entry])
 print(df_entry)
 
 # 5) Add a new TOTAL DAY entry of weather events in a data frame.
-df_dataSummary = pandas.DataFrame(columns=DETAILED_HEADER)
+df_dataSummary = pandas.DataFrame(columns=NEW_HEADER)
 df_dataSummary = pandas.concat([df_dataSummary, df_entry], ignore_index=True)
 print('Resulting Dataframe with ONLY single day summaries.')
 print(df_dataSummary)
@@ -141,7 +166,7 @@ print(df_dataSummary)
 # Publish a new DataQualityReport on the list of single day data entries.
 report2 = DataQualityReport()
 
-for thisLabel in DETAILED_HEADER:  # for each column, report basic stats
+for thisLabel in NEW_HEADER:  # for each column, report basic stats
     thisCol = df_dataSummary[thisLabel]
     report2.addCol(thisLabel, thisCol)
 
