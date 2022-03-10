@@ -58,14 +58,20 @@ class DataQualityReport:
         # Check to ensure that mathematical methods can work on data.
         #TODO - Refine loop to account for [0] index being null
         numeric = True
+
         for entry in data:
-            if type(entry) == str:
-                numeric = False
-                break
-            elif type(entry) is None:
+            # If an entry in a column is blank, evaluate the next entry.
+            if type(entry) is None:
                 print("value indexed was NULL. Look for the type of the next "
                       "one")
                 continue
+            else:
+                if type(entry) == str:
+                    numeric = False
+                # No matter what. For the first non-blank entry, break loop.
+                break
+
+
 
         # Only process columns of data that are NUMERIC.
         if not numeric:
