@@ -37,18 +37,22 @@ from vt_ApplicationsOfML.Libraries.DataExploration.DataQualityReport import \
 # Initial loading of header-less data and adding a header
 #   Date = yyyymmdd
 #   OBS-Time = hhmm
-FILENAME = 'C:/Data/USW00013880-Test.csv'
+FILE_IN = 'C:/Data/USW00013880-Test.csv'
 INIT_HEADER = ['ID', 'Date', 'Element', 'Value', 'MeasurementFlag',
                'QualityFlag', 'SourceFlag', 'OBS-Time']
-df = pandas.read_csv(FILENAME, header=None)
+df = pandas.read_csv(FILE_IN, header=None)
 df.columns = INIT_HEADER
 print(df[1:5])
+
+FILE_OUT = 'C:/Data/USW00013880-Test-SINGLEDAY.csv'
 
 #####################################
 # Establish user settings for the program, dataframe headers, etc
 MODEL_VERSION = 1
+ALL_DAYS = 0
+OUTPUT_FILE = 1
 
-BASE_COLUMNS = ['Date']
+BASE_COLUMNS = ['Date', '#Events']
 CORE5_FEATURES = ['PRCP', 'SNOW', 'SNWD', 'TMAX', 'TMIN']
 ELEMENT_TYPES = df.Element.unique()
 TARGET_VARIABLES = ['PRECIPFLAG', 'PRECIPAMT', 'NEXTDAYPRECIPFLAG',
@@ -85,8 +89,8 @@ for thisLabel in INIT_HEADER:  # for each column, report basic stats
         thisCol = df[thisLabel]
         report1.addCol(thisLabel, thisCol)
 
-print("DataQualityReport - 1/2")
-print(report1.to_string())
+#print("DataQualityReport - 1/2")
+#print(report1.to_string())
 
 
 ##########################################################################
@@ -104,61 +108,85 @@ else:
 # print(NEW_HEADER)
 
 # 2) Isolate a single day's total events into a dictionary.
-daysMeasured = df.Date.unique()
+df_listOfDays = df.Date.unique()
+print("list of unique Days: ")
+print(df_listOfDays)
 
 # TODO - When ready, create another loop to loop over all unique days below.
-oneDayEvents = df.loc[df['Date'] == daysMeasured[0]]
-print("Example isoDaysEvents:")
-print(oneDayEvents)
+if ALL_DAYS:
+    numDays = len(df_listOfDays)
+else:
+    numDays = 3
 
-# 3) Summarize the day's events into a single entry
-#       Create a blank entry.
-keys = NEW_HEADER
-blankValues = [0] * len(NEW_HEADER)
-entry = dict(zip(keys, blankValues))
-# print("Blank Entry pre-processing")
-# print(entry)
-
-# 4) Loop through each datapoint on a particular day. Find what part of the
-#       dictionary the datapoint's ELEMENT corresponds too. Do math based on
-#       that ELEMENT value.
-numEntries = len(oneDayEvents.index)
-for i in range(numEntries):
-    entryList = oneDayEvents.loc[i, :].values.tolist()
-    # TODO - ^^^ Maybe make 'entryList' a map of the keys equal to initial
-    #  'header' to simply value accessing and placement?
-    # print(i)
-    # print(entryList)
-    entry['Date'] = entryList[1]
-    element = entryList[2]
-
-    # SWITCH statement to process the ELEMENT + VALUE
-    if element == 'TMAX':
-        entry[element] = entryList[3]
-        # print('TempMax was ' + str(entryList[3]))
-    elif element == 'PRCP':
-        entry[element] = entryList[3]
-        # print('Precipitation was ' + str(entryList[3]))
-    elif element == 'SNOW':
-        entry[element] = entryList[3]
-        # print('Snow fall was ' + str(entryList[3]))
-    elif element == 'TMIN':
-        entry[element] = entryList[3]
-        # print('TempMin was ' + str(entryList[3]))
-    elif element == 'SNWD':
-        entry[element] = entryList[3]
-        # print('Snow depth was ' + str(entryList[3]))
-    # TODO - Add more 'elif' statements for the rest of the ELEMENT/VALUE pairs.
-    else:
-        print('Found element ' + str(entryList[2]))
-
-print('Resulting Single Day Entry')
-df_entry = pandas.DataFrame([entry])
-print(df_entry)
-
-# 5) Add a new TOTAL DAY entry of weather events in a data frame.
 df_dataSummary = pandas.DataFrame(columns=NEW_HEADER)
-df_dataSummary = pandas.concat([df_dataSummary, df_entry], ignore_index=True)
+
+for dayToProcess in range(0, numDays):
+    oneDayEvents = df.loc[df['Date'] == df_listOfDays[dayToProcess]]
+    # - HERE is issue ^^^. I need to cycle through her until reached null.
+
+    print("Day(s)")
+    print(oneDayEvents.Date)
+    print("IsoDaysEvents:")
+    print(oneDayEvents)
+
+    # 3) Loop through each datapoint on a particular day. Find what part of the
+    #       dictionary the datapoint's ELEMENT corresponds too. Do math based on
+    #       that ELEMENT value.
+    eventsInDay = len(oneDayEvents.index)
+    print("Events in the Day Measured:")
+    print(eventsInDay)
+    for i in range(0, eventsInDay):
+        # 4) Summarize the day's events into a single entry
+        #       Create a blank entry.
+        if i == 0:
+            blankValues = [0] * len(NEW_HEADER)
+            entry = dict(zip(NEW_HEADER, blankValues))
+            print("Blank Entry:")
+            print(entry)
+            entry['#Events'] = eventsInDay
+
+        firstIndex = oneDayEvents.first_valid_index()
+        entryList = oneDayEvents.loc[i + firstIndex, :].values.tolist()
+        print("Event:")
+        print(entryList)
+        # TODO - ^^^ Maybe make 'entryList' a map of the keys equal to initial
+        #  'header' to simply value accessing and placement?
+        # print(i)
+        # print(entryList)
+
+
+
+
+        entry['Date'] = entryList[1]
+        element = entryList[2]
+
+        # SWITCH statement to process the ELEMENT + VALUE
+        if element == 'TMAX':
+            entry[element] = entryList[3]
+            # print('TempMax was ' + str(entryList[3]))
+        elif element == 'PRCP':
+            entry[element] = entryList[3]
+            # print('Precipitation was ' + str(entryList[3]))
+        elif element == 'SNOW':
+            entry[element] = entryList[3]
+            # print('Snow fall was ' + str(entryList[3]))
+        elif element == 'TMIN':
+            entry[element] = entryList[3]
+            # print('TempMin was ' + str(entryList[3]))
+        elif element == 'SNWD':
+            entry[element] = entryList[3]
+            # print('Snow depth was ' + str(entryList[3]))
+        # TODO - Add more 'elif' statements for the rest of the ELEMENT/VALUE pairs.
+        else:
+            print('Found element ' + str(entryList[2]))
+
+    print('Resulting Single Day Entry')
+    df_entry = pandas.DataFrame([entry])
+    print(df_entry)
+
+    # 5) Add a new TOTAL DAY entry of weather events in a data frame.
+    df_dataSummary = pandas.concat([df_dataSummary, df_entry], ignore_index=True)
+
 print('Resulting Dataframe with ONLY single day summaries.')
 print(df_dataSummary)
 
@@ -170,5 +198,13 @@ for thisLabel in NEW_HEADER:  # for each column, report basic stats
     thisCol = df_dataSummary[thisLabel]
     report2.addCol(thisLabel, thisCol)
 
-# print("DataQualityReport - 2/2")
-# print(report2.to_string())
+print("DataQualityReport - 2/2")
+print(report2.to_string())
+
+
+############################################
+# Publish a day summary dataframe to a csv
+if OUTPUT_FILE:
+    df_dataSummary.to_csv(FILE_OUT)
+
+
