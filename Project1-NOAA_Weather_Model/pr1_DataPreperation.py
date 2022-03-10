@@ -116,7 +116,7 @@ print(df_listOfDays)
 if ALL_DAYS:
     numDays = len(df_listOfDays)
 else:
-    numDays = 3
+    numDays = 10
 
 df_dataSummary = pandas.DataFrame(columns=NEW_HEADER)
 
@@ -135,6 +135,7 @@ for dayToProcess in range(0, numDays):
     eventsInDay = len(oneDayEvents.index)
     print("Events in the Day Measured:")
     print(eventsInDay)
+
     for i in range(0, eventsInDay):
         # 4) Summarize the day's events into a single entry
         #       Create a blank entry.
@@ -143,21 +144,18 @@ for dayToProcess in range(0, numDays):
             entry = dict(zip(NEW_HEADER, blankValues))
             print("Blank Entry:")
             print(entry)
+
+            # Fill in One-Time-Only values.
+            entry['Date'] = entryList[1]
             entry['#Events'] = eventsInDay
 
-        firstIndex = oneDayEvents.first_valid_index()
-        entryList = oneDayEvents.loc[i + firstIndex, :].values.tolist()
+        # Dissect each event in a day.
+        index = oneDayEvents.index[i]
+        entryList = oneDayEvents.loc[index, :].values.tolist()
         print("Event:")
         print(entryList)
-        # TODO - ^^^ Maybe make 'entryList' a map of the keys equal to initial
-        #  'header' to simply value accessing and placement?
-        # print(i)
-        # print(entryList)
 
-
-
-
-        entry['Date'] = entryList[1]
+        # Fill in values for each desired column and ELEMENT
         element = entryList[2]
 
         # SWITCH statement to process the ELEMENT + VALUE
@@ -180,15 +178,15 @@ for dayToProcess in range(0, numDays):
         else:
             print('Found element ' + str(entryList[2]))
 
-    print('Resulting Single Day Entry')
+    #print('Resulting Single Day Entry')
     df_entry = pandas.DataFrame([entry])
-    print(df_entry)
+    #print(df_entry)
 
     # 5) Add a new TOTAL DAY entry of weather events in a data frame.
     df_dataSummary = pandas.concat([df_dataSummary, df_entry], ignore_index=True)
 
-print('Resulting Dataframe with ONLY single day summaries.')
-print(df_dataSummary)
+#print('Resulting Dataframe with ONLY single day summaries.')
+#print(df_dataSummary)
 
 ############################################
 # Publish a new DataQualityReport on the list of single day data entries.
