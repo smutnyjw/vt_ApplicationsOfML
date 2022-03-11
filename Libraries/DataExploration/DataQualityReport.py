@@ -1,7 +1,7 @@
 ############################################################################
 #   Author: John Smutny
 #   Contributor: Dr Creed Jones
-#   Date Updated: 03/06/2022
+#   Date Updated: 03/11/2022
 #   Date Created: 02/15/2022
 #
 #   Description:
@@ -12,7 +12,9 @@
 #       features for processing.
 #
 #   Future Improvements:
-#       1) Add ability to process columns of 'char' data values. Test Case: if
+#       1) Add ability to process columns of 'char' data values. Possibly as
+#       a new fct called .addCol_categorical().
+#       Test Case: if
 #       user attempts to '.addCol()' of 'chars' (A, B, C, etc); 1) the code
 #       could convert those chars to ints using the ascii table, 2) do data
 #       process as if it was a numeric for all non-float metrics like 'mean',
@@ -56,22 +58,9 @@ class DataQualityReport:
         n_missing = data.isnull().sum()
 
         # Check to ensure that mathematical methods can work on data.
-        #TODO - Refine loop to account for [0] index being null
         numeric = True
-
-        for entry in data:
-            # If an entry in a column is blank, evaluate the next entry.
-            if type(entry) is None:
-                print("value indexed was NULL. Look for the type of the next "
-                      "one")
-                continue
-            else:
-                if type(entry) == str:
-                    numeric = False
-                # No matter what. For the first non-blank entry, break loop.
-                break
-
-
+        if type(data[data.first_valid_index()]) == str:
+            numeric = False
 
         # Only process columns of data that are NUMERIC.
         if not numeric:

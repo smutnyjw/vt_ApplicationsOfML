@@ -40,7 +40,7 @@ from vt_ApplicationsOfML.Libraries.DataExploration.DataQualityReport import \
 # Initial loading of header-less data and adding a header
 #   Date = yyyymmdd
 #   OBS-Time = hhmm
-FILE_IN = 'C:/Data/USW00013880.csv'
+FILE_IN = 'C:/Data/USW00013880-Test.csv'
 INIT_HEADER = ['ID', 'Date', 'Element', 'Value', 'MeasurementFlag',
                'QualityFlag', 'SourceFlag', 'OBS-Time']
 df = pandas.read_csv(FILE_IN, header=None)
@@ -52,8 +52,8 @@ FILE_OUT = 'C:/Data/USW00013880-Test-SINGLEDAY.csv'
 #####################################
 # Establish user settings for the program, dataframe headers, etc
 MODEL_VERSION = 1
-PERCENT_DAYS = 0.1
-OUTPUT_FILE = 1
+PERCENT_DAYS = 0
+OUTPUT_FILE = 0
 
 BASE_COLUMNS = ['Date', '#Events']
 CORE5_FEATURES = ['PRCP', 'SNOW', 'SNWD', 'TMAX', 'TMIN']
@@ -75,18 +75,11 @@ report1 = DataQualityReport()
 #print(type(df.QualityFlag.loc[0]))
 
 for thisLabel in INIT_HEADER:  # for each column, report basic stats
-    if thisLabel == 'MeasurementFlag' \
-            or thisLabel == 'QualityFlag':
-        print('WARN: DataQualityReport.py cannot process label = ' + thisLabel)
-        # TODO - 'DataQualityReport.py' cannot process [0] index 'nan' values.
-        #  Clean data before this step? (fill in nan, replace categorical chars)
-        continue
-    else:
-        thisCol = df[thisLabel]
-        report1.addCol(thisLabel, thisCol)
+    thisCol = df[thisLabel]
+    report1.addCol(thisLabel, thisCol)
 
-#print("DataQualityReport - 1/2")
-#print(report1.to_string())
+print("DataQualityReport - 1/2")
+print(report1.to_string())
 
 ##########################################################################
 # After initial Data Quality Report.
@@ -94,7 +87,6 @@ for thisLabel in INIT_HEADER:  # for each column, report basic stats
 # Actions List:
 
 # 1) Remove all data points that have a non-NULL QualityFlag
-print(len(df.QualityFlag.isnull()))
 df = df[df.QualityFlag.isnull()]
 
 # 1b) TODO - Get indexes of all MeasurementFlag 'T' values?
@@ -128,7 +120,7 @@ df_listOfDays = df.Date.unique()
 if PERCENT_DAYS:
     numDays = int(len(df_listOfDays) * PERCENT_DAYS)
 else:
-    numDays = 20
+    numDays = 10
 
 df_dataSummary = pandas.DataFrame(columns=NEW_HEADER)
 
