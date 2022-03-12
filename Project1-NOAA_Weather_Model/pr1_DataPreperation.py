@@ -52,8 +52,8 @@ FILE_OUT = 'C:/Data/USW00013880-Test-SINGLEDAY.csv'
 #####################################
 # Establish user settings for the program, dataframe headers, etc
 MODEL_VERSION = 1
-PERCENT_DAYS = 1.0  # value 0-1
-OUTPUT_FILE = 1
+PERCENT_DAYS = 0.01  # value 0-1
+OUTPUT_FILE = 0
 
 BASE_COLUMNS = ['Date', '#Events']
 CORE5_FEATURES = ['PRCP', 'SNOW', 'SNWD', 'TMAX', 'TMIN']
@@ -72,7 +72,14 @@ report1 = DataQualityReport()
 
 for thisLabel in INIT_HEADER:  # for each column, report basic stats
     thisCol = df[thisLabel]
-    report1.addCol(thisLabel, thisCol)
+
+    if thisLabel == 'Element'\
+            or thisLabel == 'MeasurementFlag'\
+            or thisLabel == 'QualityFlag'\
+            or thisLabel == 'SourceFlag':
+        report1.addCatCol(thisLabel, thisCol)
+    else:
+        report1.addCol(thisLabel, thisCol)
 
 print("DataQualityReport - 1/2")
 print(report1.to_string())
