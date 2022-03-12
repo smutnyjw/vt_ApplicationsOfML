@@ -52,21 +52,25 @@ FILE_OUT = 'C:/Data/USW00013880-Test-SINGLEDAY.csv'
 #####################################
 # Establish user settings for the program, dataframe headers, etc
 MODEL_VERSION = 1
-PERCENT_DAYS = 0.01  # value 0-1
+PERCENT_DAYS = 0  # value 0-1
 OUTPUT_FILE = 0
 
-BASE_COLUMNS = ['Date', '#Events']
+BASE_COLUMNS = ['#', 'Date', '#Events']
+# Core five NOAA measurement features.
 CORE5_FEATURES = ['PRCP', 'SNOW', 'SNWD', 'TMAX', 'TMIN']
-ELEMENT_TYPES = df.Element.unique()
+# Evaporation and Sunshine.
+NEXT5_FEATURES = ['EVAP', 'MNPN', 'MXPN', 'ACMC', 'PSUN']
+ALL_ELEMENT_TYPES = df.Element.unique()
 TARGET_VARIABLES = ['PREV_PRECIPFLAG', 'PREV_PRECIPAMT', 'PRECIPFLAG',
                     'PRECIPAMT', 'NEXTPRECIPFLAG',
                     'NEXTPRECIPAMT']
 
 CORE5_HEADER = BASE_COLUMNS + CORE5_FEATURES + TARGET_VARIABLES
-DETAILED_HEADER = BASE_COLUMNS + ELEMENT_TYPES.tolist() + TARGET_VARIABLES
+MODEL2_HEADER = BASE_COLUMNS + CORE5_FEATURES + NEXT5_FEATURES + \
+                TARGET_VARIABLES
+DETAILED_HEADER = BASE_COLUMNS + ALL_ELEMENT_TYPES.tolist() + TARGET_VARIABLES
 
 ##########################################################################
-# TODO - Do work necessary to print a Data Quality Report before cleaning.
 # Create an organized data set summary for the console using a data frame.
 report1 = DataQualityReport()
 
@@ -106,24 +110,20 @@ print(df[1:5])
 # 1) Create final Dataframe header, define features and target variables.
 if MODEL_VERSION == 1:
     NEW_HEADER = CORE5_HEADER
+elif MODEL_VERSION == 2:
+    NEW_HEADER = MODEL2_HEADER
 else:
     NEW_HEADER = DETAILED_HEADER
 
-# print("New Headers:")
-# print(NEW_HEADER)
+df_dataSummary = pandas.DataFrame(columns=NEW_HEADER)
 
 # 2) Isolate a single day's total events into a dictionary.
 df_listOfDays = df.Date.unique()
-# print("list of unique Days: ")
-# print(df_listOfDays)
-
 
 if PERCENT_DAYS:
     numDays = int(len(df_listOfDays) * PERCENT_DAYS)
 else:
     numDays = 10
-
-df_dataSummary = pandas.DataFrame(columns=NEW_HEADER)
 
 for dayToProcess in range(0, numDays):
     # 3) Loop through each datapoint on a particular day. Find what part of the
@@ -136,23 +136,21 @@ for dayToProcess in range(0, numDays):
 
     # 4) Summarize the day's events into a single entry
     for i in range(0, numEventsInDay):
-        # Dissect each event in a day.
-        index = df_oneDayEvents.index[i]
-        entryList = df_oneDayEvents.loc[index, :].values.tolist()
-        # print("Event:")
-        # print(entryList)
+        # Dissect each event in the current day.
+        index_cur = df_oneDayEvents.index[i]
+        entryList = df_oneDayEvents.loc[index_cur, :].values.tolist()
 
         if i == 0:
-            # Create a blank entry to summarize a new day.
+            # Start with a blank entry to summarize a new day's values.
             blankValues = [0] * len(NEW_HEADER)
             entry = dict(zip(NEW_HEADER, blankValues))
-            # print("Blank Entry:")
-            # print(entry)
 
+            # Reset Target variables.
             percipFlag = False
             percipAmt = 0
 
             # Fill in One-Time-Only values.
+            entry['#'] = dayToProcess
             entry['Date'] = entryList[1]
             entry['#Events'] = numEventsInDay
 
@@ -167,22 +165,34 @@ for dayToProcess in range(0, numDays):
             # measurement?
         elif element == 'PRCP':
             entry[element] = entryList[3]
-            if entryList[3] > 0 or df.MeasurementFlag[index] == 'T':
+            if entryList[3] > 0 or df.MeasurementFlag[index_cur] == 'T':
                 percipFlag = True
             percipAmt = percipAmt + entryList[3]
             # print('Precipitation was ' + str(entryList[3]))
         elif element == 'SNOW':
             entry[element] = entryList[3]
-            if entryList[3] > 0 or df.MeasurementFlag[index] == 'T':
+            if entryList[3] > 0 or df.MeasurementFlag[index_cur] == 'T':
                 percipFlag = True
-            percipAmt = percipAmt + entryList[3] / 8
+            percipAmt = round(percipAmt + entryList[3] / 8)    #round down
             # print('Snow fall was ' + str(entryList[3]))
         elif element == 'TMIN':
             entry[element] = entryList[3]
             # print('TempMin was ' + str(entryList[3]))
         elif element == 'SNWD':
-            entry[element] = entryList[3]
+            entry[element] = entry[element] + entryList[3]
             # print('Snow depth was ' + str(entryList[3]))
+        elif element == 'EVAP':
+            entry[element] = entry[element] + entryList[3]
+            # print('Evaporation of water (tenth of mm) was ' + str(entryList[
+            # 3]))
+        elif element == 'MNPN':
+            entry[element] = entryList[3]
+        elif element == 'MXPN':
+            entry[element] = entryList[3]
+        elif element == 'ACMC':
+            entry[element] = entryList[3]
+        elif element == 'PSUN':
+            entry[element] = entryList[3]
         # TODO - Add more 'elif' statements for the rest of the ELEMENT/VALUE pairs.
         else:
             continue
@@ -192,9 +202,9 @@ for dayToProcess in range(0, numDays):
     entry['PRECIPFLAG'] = percipFlag
     entry['PRECIPAMT'] = percipAmt
 
-    # print('Resulting Single Day Entry')
+    # Convert the day summary from a list too a dataframe.
     df_entry = pandas.DataFrame([entry])
-    # print(df_entry)
+    #print(df_entry)
 
     # 5) Add a new TOTAL DAY entry of weather events in a data frame.
     df_dataSummary = pandas.concat([df_dataSummary, df_entry],
@@ -205,8 +215,6 @@ for dayToProcess in range(0, numDays):
     elif dayToProcess == int(numDays * 0.75):
         print("Loop 1/2: 75%")
 
-# print('Resulting Dataframe with ONLY single day summaries.')
-# print(df_dataSummary)
 print("Loop 1/2: COMPLETE")
 
 ##########################################################################
@@ -224,10 +232,6 @@ for dayToProcess in range(0, numDays):
 
     # Fill in PREVIOUS day precipitation amounts.
     if 0 < dayToProcess < numDays - 1:
-        # print("PDay: " + str(df_dataSummary.at[df_PrevDay[0], 'Date']))
-        # print("CDay: " + str(df_dataSummary.at[df_curDay[0], 'Date']))
-        # print("NDay: " + str(df_dataSummary.at[df_NextDay[0], 'Date']))
-
         # Fill in PREVIOUS day precipitation.
         df_dataSummary.at[df_curDay[0], 'PREV_PRECIPFLAG'] = \
             df_dataSummary.at[df_PrevDay[0], 'PRECIPFLAG']
