@@ -51,9 +51,9 @@ FILE_OUT = 'C:/Data/USW00013880-Test-SINGLEDAY.csv'
 
 #####################################
 # Establish user settings for the program, dataframe headers, etc
-MODEL_VERSION = 1
-PERCENT_DAYS = 0  # value 0-1
-OUTPUT_FILE = 0
+MODEL_VERSION = 2
+PERCENT_DAYS = 1.0  # value 0-1
+OUTPUT_FILE = 1
 
 BASE_COLUMNS = ['#', 'Date', '#Events']
 # Core five NOAA measurement features.
@@ -68,7 +68,7 @@ TARGET_VARIABLES = ['PREV_PRECIPFLAG', 'PREV_PRECIPAMT', 'PRECIPFLAG',
 CORE5_HEADER = BASE_COLUMNS + CORE5_FEATURES + TARGET_VARIABLES
 MODEL2_HEADER = BASE_COLUMNS + CORE5_FEATURES + NEXT5_FEATURES + \
                 TARGET_VARIABLES
-DETAILED_HEADER = BASE_COLUMNS + ALL_ELEMENT_TYPES.tolist() + TARGET_VARIABLES
+ALL_HEADER = BASE_COLUMNS + ALL_ELEMENT_TYPES.tolist() + TARGET_VARIABLES
 
 ##########################################################################
 # Create an organized data set summary for the console using a data frame.
@@ -112,8 +112,8 @@ if MODEL_VERSION == 1:
     NEW_HEADER = CORE5_HEADER
 elif MODEL_VERSION == 2:
     NEW_HEADER = MODEL2_HEADER
-else:
-    NEW_HEADER = DETAILED_HEADER
+elif MODEL_VERSION == 0:
+    NEW_HEADER = ALL_HEADER
 
 df_dataSummary = pandas.DataFrame(columns=NEW_HEADER)
 
@@ -181,18 +181,20 @@ for dayToProcess in range(0, numDays):
         elif element == 'SNWD':
             entry[element] = entry[element] + entryList[3]
             # print('Snow depth was ' + str(entryList[3]))
-        elif element == 'EVAP':
-            entry[element] = entry[element] + entryList[3]
-            # print('Evaporation of water (tenth of mm) was ' + str(entryList[
-            # 3]))
-        elif element == 'MNPN':
-            entry[element] = entryList[3]
-        elif element == 'MXPN':
-            entry[element] = entryList[3]
-        elif element == 'ACMC':
-            entry[element] = entryList[3]
-        elif element == 'PSUN':
-            entry[element] = entryList[3]
+
+        if MODEL_VERSION > 1 or MODEL_VERSION == 0:
+            if element == 'EVAP':
+                entry[element] = entry[element] + entryList[3]
+                # print('Evaporation of water (tenth of mm) was ' + str(entryList[
+                # 3]))
+            elif element == 'MNPN':
+                entry[element] = entryList[3]
+            elif element == 'MXPN':
+                entry[element] = entryList[3]
+            elif element == 'ACMC':
+                entry[element] = entryList[3]
+            elif element == 'PSUN':
+                entry[element] = entryList[3]
         # TODO - Add more 'elif' statements for the rest of the ELEMENT/VALUE pairs.
         else:
             continue
@@ -201,6 +203,22 @@ for dayToProcess in range(0, numDays):
     # After going through all of the days events; fill in precipitation info.
     entry['PRECIPFLAG'] = percipFlag
     entry['PRECIPAMT'] = percipAmt
+
+    if dayToProcess > 0:
+        df_PrevDay = df_dataSummary.index[df_dataSummary['Date'] ==
+                                          df_listOfDays[dayToProcess - 1]]
+
+        entry['PREV_PRECIPFLAG'] = df_dataSummary.at[df_PrevDay[0],
+                                                     'PRECIPFLAG']
+        entry['PREV_PRECIPAMT'] = df_dataSummary.at[df_PrevDay[0],
+                                                     'PRECIPAMT']
+        df_dataSummary.at[df_PrevDay[0], 'NEXTPRECIPFLAG'] = percipFlag
+        df_dataSummary.at[df_PrevDay[0], 'NEXTPRECIPAMT'] = percipAmt
+    else:
+        entry['PREV_PRECIPFLAG'] = False
+        entry['PREV_PRECIPAMT'] = 0
+
+
 
     # Convert the day summary from a list too a dataframe.
     df_entry = pandas.DataFrame([entry])
@@ -211,65 +229,11 @@ for dayToProcess in range(0, numDays):
                                    ignore_index=True)
 
     if dayToProcess == int(numDays * 0.25):
-        print("Loop 1/2: 25%")
+        print("Processing: 25%")
     elif dayToProcess == int(numDays * 0.75):
-        print("Loop 1/2: 75%")
+        print("Processing: 75%")
 
-print("Loop 1/2: COMPLETE")
-
-##########################################################################
-# Populate precipitation data based on PREVIOUS and NEXT Day.
-for dayToProcess in range(0, numDays):
-    df_curDay = df_dataSummary.index[df_dataSummary['Date'] ==
-                                     df_listOfDays[dayToProcess]]
-
-    if dayToProcess > 0:
-        df_PrevDay = df_dataSummary.index[df_dataSummary['Date'] ==
-                                          df_listOfDays[dayToProcess - 1]]
-    if dayToProcess < numDays-1:
-        df_NextDay = df_dataSummary.index[df_dataSummary['Date'] ==
-                                          df_listOfDays[dayToProcess + 1]]
-
-    # Fill in PREVIOUS day precipitation amounts.
-    if 0 < dayToProcess < numDays - 1:
-        # Fill in PREVIOUS day precipitation.
-        df_dataSummary.at[df_curDay[0], 'PREV_PRECIPFLAG'] = \
-            df_dataSummary.at[df_PrevDay[0], 'PRECIPFLAG']
-        df_dataSummary.at[df_curDay[0], 'PREV_PRECIPAMT'] = \
-            df_dataSummary.at[df_PrevDay[0], 'PRECIPAMT']
-
-        # Fill in NEXT day precipitation.
-        df_dataSummary.at[df_curDay[0], 'NEXTPRECIPFLAG'] = \
-            df_dataSummary.at[df_NextDay[0], 'PRECIPFLAG']
-        df_dataSummary.at[df_curDay[0], 'NEXTPRECIPAMT'] = \
-            df_dataSummary.at[df_NextDay[0], 'PRECIPAMT']
-
-    elif dayToProcess == 0:
-        df_dataSummary.at[df_curDay[0], 'PREV_PRECIPFLAG'] = 0
-        df_dataSummary.at[df_curDay[0], 'PREV_PRECIPAMT'] = 0
-
-        df_dataSummary.at[df_curDay[0], 'NEXTPRECIPFLAG'] = \
-            df_dataSummary.at[df_NextDay[0], 'PRECIPFLAG']
-        df_dataSummary.at[df_curDay[0], 'NEXTPRECIPAMT'] = \
-            df_dataSummary.at[df_NextDay[0], 'PRECIPAMT']
-    else:
-        df_dataSummary.at[df_curDay[0], 'PREV_PRECIPFLAG'] = \
-            df_dataSummary.at[df_PrevDay[0], 'PRECIPFLAG']
-        df_dataSummary.at[df_curDay[0], 'PREV_PRECIPAMT'] = \
-            df_dataSummary.at[df_PrevDay[0], 'PRECIPAMT']
-
-        df_dataSummary.at[df_curDay[0], 'NEXTPRECIPFLAG'] = 0
-        df_dataSummary.at[df_curDay[0], 'NEXTPRECIPFLAG'] = 0
-
-    # print(df_dataSummary.loc[df_dataSummary['Date'] == df_listOfDays[
-    # dayToProcess]])
-
-    if dayToProcess == int(numDays * 0.25):
-        print("Loop 2/2: 25%")
-    elif dayToProcess == int(numDays * 0.75):
-        print("Loop 2/2: 75%")
-
-print("Loop 2/2: COMPLETE")
+print("Processing: COMPLETE")
 
 ##########################################################################
 # TODO - Update headers w/ end units
