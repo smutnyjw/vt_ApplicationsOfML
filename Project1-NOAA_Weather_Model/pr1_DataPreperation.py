@@ -25,8 +25,6 @@
 #       Account for 'NEXTDAY' values.
 #       
 #   Cannot:
-#       'DataQualityReport.py' lib file cannot measure any aspects of
-#       categorical values.
 #       End Goal headers do not contain units.
 
 ##########################################################################
@@ -37,9 +35,10 @@ from vt_ApplicationsOfML.Libraries.DataExploration.DataQualityReport import \
     DataQualityReport
 
 #####################################
-# Initial loading of header-less data and adding a header
+# Establish the initial input data.
 #   Date = yyyymmdd
 #   OBS-Time = hhmm
+# Constants for data headers. ORIGINAL data
 FILE_IN = 'C:/Data/USW00013880.csv'
 INIT_HEADER = ['ID', 'Date', 'Element', 'Value', 'MeasurementFlag',
                'QualityFlag', 'SourceFlag', 'OBS-Time']
@@ -47,14 +46,14 @@ df = pandas.read_csv(FILE_IN, header=None)
 df.columns = INIT_HEADER
 print(df[1:5])
 
-FILE_OUT = 'C:/Data/USW00013880-Test-SINGLEDAY.csv'
-
 #####################################
 # Establish user settings for the program, dataframe headers, etc
 MODEL_VERSION = 2
-PERCENT_DAYS = 1.0  # value 0-1
+PERCENT_DAYS = 0.01  # value 0-1
 OUTPUT_FILE = 1
+FILE_OUT = 'C:/Data/USW00013880-M' + str(MODEL_VERSION) + '-SINGLEDAY.csv'
 
+# Constants for the END RESULT data headers.
 BASE_COLUMNS = ['#', 'Date', '#Events']
 # Core five NOAA measurement features.
 CORE5_FEATURES = ['PRCP', 'SNOW', 'SNWD', 'TMAX', 'TMIN']
