@@ -55,19 +55,22 @@ FILE_OUT = 'C:/Data/USW00013880-M' + str(MODEL_VERSION) + '-SINGLEDAY.csv'
 
 # Constants for the END RESULT data headers.
 BASE_COLUMNS = ['#', 'Date', '#Events']
+# Core Precipitation measurements.
+PERCIP_FEATURES = ['PREV_PRECIPFLAG', 'PREV_PRECIPAMT',
+                   'PRECIPFLAG', 'PRECIPAMT']
 # Core five NOAA measurement features.
 CORE5_FEATURES = ['PRCP', 'SNOW', 'SNWD', 'TMAX', 'TMIN']
 # Evaporation and Sunshine.
 NEXT5_FEATURES = ['EVAP', 'MNPN', 'MXPN', 'ACMC', 'PSUN']
 ALL_ELEMENT_TYPES = df.Element.unique()
-TARGET_VARIABLES = ['PREV_PRECIPFLAG', 'PREV_PRECIPAMT', 'PRECIPFLAG',
-                    'PRECIPAMT', 'NEXTPRECIPFLAG',
-                    'NEXTPRECIPAMT']
+TARGET_VARIABLES = ['NEXTPRECIPFLAG', 'NEXTPRECIPAMT']
 
-CORE5_HEADER = BASE_COLUMNS + CORE5_FEATURES + TARGET_VARIABLES
-MODEL2_HEADER = BASE_COLUMNS + CORE5_FEATURES + NEXT5_FEATURES + \
+CORE5_HEADER = BASE_COLUMNS + CORE5_FEATURES + PERCIP_FEATURES + \
                 TARGET_VARIABLES
-ALL_HEADER = BASE_COLUMNS + ALL_ELEMENT_TYPES.tolist() + TARGET_VARIABLES
+MODEL2_HEADER = BASE_COLUMNS + CORE5_FEATURES + NEXT5_FEATURES + \
+                PERCIP_FEATURES + TARGET_VARIABLES
+ALL_HEADER = BASE_COLUMNS + ALL_ELEMENT_TYPES.tolist() + PERCIP_FEATURES + \
+                TARGET_VARIABLES
 
 ##########################################################################
 # Create an organized data set summary for the console using a data frame.
@@ -124,6 +127,7 @@ if PERCENT_DAYS:
 else:
     numDays = 10
 
+print("Processing: 0%")
 for dayToProcess in range(0, numDays):
     # 3) Loop through each datapoint on a particular day. Find what part of the
     #       dictionary the datapoint's ELEMENT corresponds too. Do math based on
@@ -145,7 +149,7 @@ for dayToProcess in range(0, numDays):
             entry = dict(zip(NEW_HEADER, blankValues))
 
             # Reset Target variables.
-            percipFlag = False
+            percipFlag = 0
             percipAmt = 0
 
             # Fill in One-Time-Only values.
@@ -165,13 +169,13 @@ for dayToProcess in range(0, numDays):
         elif element == 'PRCP':
             entry[element] = entryList[3]
             if entryList[3] > 0 or df.MeasurementFlag[index_cur] == 'T':
-                percipFlag = True
+                percipFlag = 1
             percipAmt = percipAmt + entryList[3]
             # print('Precipitation was ' + str(entryList[3]))
         elif element == 'SNOW':
             entry[element] = entryList[3]
             if entryList[3] > 0 or df.MeasurementFlag[index_cur] == 'T':
-                percipFlag = True
+                percipFlag = 1
             percipAmt = round(percipAmt + entryList[3] / 8)    #round down
             # print('Snow fall was ' + str(entryList[3]))
         elif element == 'TMIN':
@@ -214,10 +218,8 @@ for dayToProcess in range(0, numDays):
         df_dataSummary.at[df_PrevDay[0], 'NEXTPRECIPFLAG'] = percipFlag
         df_dataSummary.at[df_PrevDay[0], 'NEXTPRECIPAMT'] = percipAmt
     else:
-        entry['PREV_PRECIPFLAG'] = False
+        entry['PREV_PRECIPFLAG'] = 0
         entry['PREV_PRECIPAMT'] = 0
-
-
 
     # Convert the day summary from a list too a dataframe.
     df_entry = pandas.DataFrame([entry])
