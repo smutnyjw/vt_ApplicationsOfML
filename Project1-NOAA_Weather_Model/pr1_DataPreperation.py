@@ -270,7 +270,7 @@ report2 = DataQualityReport()
 
 for thisLabel in NEW_HEADER:  # for each column, report basic stats
     if thisLabel in NORMALIZED_COLUMNS: #or thisLabel == "NEXTPRECIPAMT":
-        print(thisLabel)
+        #print(thisLabel)
         thisCol = NormalizationOfData(df_dataSummary[thisLabel], 100, 0)
     else:
         thisCol = df_dataSummary[thisLabel]
