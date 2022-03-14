@@ -71,6 +71,31 @@ MODEL2_HEADER = BASE_COLUMNS + CORE5_FEATURES + NEXT5_FEATURES + \
                 PERCIP_FEATURES + TARGET_VARIABLES
 ALL_HEADER = BASE_COLUMNS + ALL_ELEMENT_TYPES.tolist() + PERCIP_FEATURES + \
                 TARGET_VARIABLES
+##########################################################################
+# Data Normalization: Which Columns and Function
+
+NORMALIZED_COLUMNS = ['PRCP', 'SNOW', 'SNWD', 'TMAX', 'TMIN', 'EVAP', 'MNPN', 'MXPN', 'ACMC', 'PSUN', 'PREV_PRECIPAMT', 'PRECIPAMT', 'NEXTPRECIPAMT']
+
+#Normalization equation NewData = (((DataPointX - LowestValueofX) * (DesiredHighest - DesiredLowest))/(HighestValueofX - LowestValueofX)) + DesiredLowest
+#Example if you want to make x with lowest value being y and highest being z on scale of 1 to 0 
+    #NewData = (((X - Y) * (1 - 0))/(Z - Y)) + 0
+
+def NormalizationOfData(DataColumn, DesiredHighest, DesiredLowest):
+    #First we need to get HighestValueofX and LowestValueofX
+    DataColumnHighest = DataColumn[0]
+    DataColumnLowest = DataColumn[0]
+    for data in DataColumn:
+        if data > DataColumnHighest:
+            DataColumnHighest = data
+        if data < DataColumnLowest:
+            DataColumnLowest = data
+
+    #Now we do the Normalization on the Data
+    for datapoint in range(len(DataColumn)):
+        #DataColumn[datapoint] = (("{0:.5f}".format((((DataColumn[datapoint] - DataColumnLowest) * (DesiredHighest - DesiredLowest))/(DataColumnHighest - DataColumnLowest)) + DesiredLowest)))
+        if ((DataColumnHighest - DataColumnLowest) != 0):
+            DataColumn[datapoint] = (round((((DataColumn[datapoint] - DataColumnLowest) * (DesiredHighest - DesiredLowest))/(DataColumnHighest - DataColumnLowest)) + DesiredLowest))
+    return(DataColumn)
 
 ##########################################################################
 # Create an organized data set summary for the console using a data frame.
@@ -244,7 +269,11 @@ print("Processing: COMPLETE")
 report2 = DataQualityReport()
 
 for thisLabel in NEW_HEADER:  # for each column, report basic stats
-    thisCol = df_dataSummary[thisLabel]
+    if thisLabel in NORMALIZED_COLUMNS: #or thisLabel == "NEXTPRECIPAMT":
+        print(thisLabel)
+        thisCol = NormalizationOfData(df_dataSummary[thisLabel], 100, 0)
+    else:
+        thisCol = df_dataSummary[thisLabel]
     report2.addCol(thisLabel, thisCol)
 
 print("DataQualityReport - 2/2")
