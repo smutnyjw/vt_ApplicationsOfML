@@ -9,24 +9,6 @@
 #
 #   Readme:
 #   https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/by_station/readme-by_station.txt
-#
-#   Next Steps:
-#   1) Make 'quickDQR()' fct. Replace in here.
-#   2) Only extract CORE5 data headers in original dataframe.
-#   3) (offline) Make data edit suggestions for next meeting.
-#
-#   Can:
-#       Read in a csv, create an initial dataframe of data with headers.
-#       Identify every unique Day and process some ELEMENT possibilities into
-#           a single list. Then place that list into a resulting dataframe.
-#       Publish a DataQualityReport for initial data.
-#       Publish a DataQualityReport for a day's summary of data.
-#       Process all possible ELEMENT values for an unique Day's events
-#       Account for 'NEXTDAY' values.
-#       
-#   Cannot:
-#       End Goal headers do not contain units.
-
 ##########################################################################
 
 import pandas
@@ -49,9 +31,11 @@ print(df[1:5])
 #####################################
 # Establish user settings for the program, dataframe headers, etc
 MODEL_VERSION = 2
-PERCENT_DAYS = 0.01  # value 0-1
+PERCENT_DAYS = 1.00  # value 0-1
 OUTPUT_FILE = 1
 FILE_OUT = 'C:/Data/USW00013880-M' + str(MODEL_VERSION) + '-SINGLEDAY.csv'
+DQR1_OUT = 'C:/Data/DQR1-M' + str(MODEL_VERSION) + '-SINGLEDAY.csv'
+DQR2_OUT = 'C:/Data/DQR2-M' + str(MODEL_VERSION) + '-SINGLEDAY.csv'
 
 # Constants for the END RESULT data headers.
 BASE_COLUMNS = ['#', 'Date', '#Events']
@@ -62,6 +46,7 @@ PERCIP_FEATURES = ['PREV_PRECIPFLAG', 'PREV_PRECIPAMT',
 CORE5_FEATURES = ['PRCP', 'SNOW', 'SNWD', 'TMAX', 'TMIN']
 # Evaporation and Sunshine.
 NEXT5_FEATURES = ['EVAP', 'MNPN', 'MXPN', 'ACMC', 'PSUN']
+NEXT10_FEATURES = ['WV', 'WDMV']
 ALL_ELEMENT_TYPES = df.Element.unique()
 TARGET_VARIABLES = ['NEXTPRECIPFLAG', 'NEXTPRECIPAMT']
 
@@ -69,6 +54,8 @@ CORE5_HEADER = BASE_COLUMNS + CORE5_FEATURES + PERCIP_FEATURES + \
                 TARGET_VARIABLES
 MODEL2_HEADER = BASE_COLUMNS + CORE5_FEATURES + NEXT5_FEATURES + \
                 PERCIP_FEATURES + TARGET_VARIABLES
+MODEL3_HEADER = BASE_COLUMNS + CORE5_FEATURES + NEXT5_FEATURES + \
+                NEXT10_FEATURES + PERCIP_FEATURES + TARGET_VARIABLES
 ALL_HEADER = BASE_COLUMNS + ALL_ELEMENT_TYPES.tolist() + PERCIP_FEATURES + \
                 TARGET_VARIABLES
 
@@ -89,6 +76,8 @@ for thisLabel in INIT_HEADER:  # for each column, report basic stats
 
 print("DataQualityReport - 1/2")
 print(report1.to_string())
+if(OUTPUT_FILE):
+    report1.to_csv(DQR1_OUT)
 
 ##########################################################################
 # After initial Data Quality Report.
@@ -114,6 +103,8 @@ if MODEL_VERSION == 1:
     NEW_HEADER = CORE5_HEADER
 elif MODEL_VERSION == 2:
     NEW_HEADER = MODEL2_HEADER
+elif MODEL_VERSION == 3:
+    NEW_HEADER = MODEL3_HEADER
 elif MODEL_VERSION == 0:
     NEW_HEADER = ALL_HEADER
 
@@ -198,6 +189,13 @@ for dayToProcess in range(0, numDays):
                 entry[element] = entryList[3]
             elif element == 'PSUN':
                 entry[element] = entryList[3]
+
+        if MODEL_VERSION > 2 or MODEL_VERSION == 0:
+            if 'WV' in element:
+                entry[element] = 1
+            elif element == 'WDMV':
+                entry[element] = entryList[3]
+
         # TODO - Add more 'elif' statements for the rest of the ELEMENT/VALUE pairs.
         else:
             continue
@@ -249,6 +247,9 @@ for thisLabel in NEW_HEADER:  # for each column, report basic stats
 
 print("DataQualityReport - 2/2")
 print(report2.to_string())
+
+if(OUTPUT_FILE):
+    report2.to_csv(DQR2_OUT)
 
 ############################################
 # Publish a day summary dataframe to a csv
