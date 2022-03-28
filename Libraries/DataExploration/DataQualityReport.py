@@ -157,14 +157,15 @@ class DataQualityReport:
     # @output str    String of the dataFrame.
     # Des: Create a data quality report dataframe assuming that all input
     # data is numeric.
-    def quickDQF(self, df_data, COLUMN_HEADERS):
-        report = DataQualityReport()
+    def quickDQR(self, df_data, COLUMN_HEADERS):
+        #report = DataQualityReport()
 
         for thisLabel in COLUMN_HEADERS:  # for each column, report basic stats
             thisCol = df_data[thisLabel]
-            report.addCol(thisLabel, thisCol)
+            self.addCol(thisLabel, thisCol)
 
-        print("::quickDQF() - DataQualityReport complete.")
+        print("::quickDQF() - DataQualityReport complete. Please use '<DQR "
+              "Object Name>.to_string() to print results")
 
     ##################################################################
     # @output str    String of the dataFrame.
@@ -177,3 +178,9 @@ class DataQualityReport:
     # Des: Publish DataQualityReport to a csv file path.
     def to_csv(self, FILE_PATH):
         self.statsdf.to_csv(FILE_PATH)
+
+    ##################################################################
+    # @output xlsx    Microsoft excel file of the contained data quality report.
+    # Des: Publish DataQualityReport to a xlsx file path.
+    def to_excel(self, FILE_PATH):
+        self.statsdf.to_excel(FILE_PATH)
