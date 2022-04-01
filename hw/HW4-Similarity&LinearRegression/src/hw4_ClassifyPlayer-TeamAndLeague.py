@@ -27,6 +27,7 @@ DEBUG = False
 OUTPUT_FILES = False
 TRAIN_RATIO = 0.7
 RANDOM_SEED = 22222
+#RANDOM_SEED = 100
 
 # Establish range of k values to compare similarity model accuracy.
 MIN_K = 1
@@ -35,6 +36,7 @@ MAX_K_exclusive = 16
 INPUT_FILE = '../Info&Data/BattingSalaries_cut.xlsx'
 OUTPUT_DQR1 = '../artifacts/BattingSalaries_DQR1.xlsx'
 OUTPUT_DQR2 = '../artifacts/BattingSalaries_DQR2.xlsx'
+OUTPUT_DQR3 = '../artifacts/BattingSalaries_DQR3_Normalized.xlsx'
 OUTPUT_FILE = '../artifacts/BattingSalaries_EDIT.xlsx'
 
 # Validate control flags
@@ -42,6 +44,8 @@ assert DEBUG in [0, 1, True, False,
                  None], 'DEBUG flag must be a valid true-false value'
 assert OUTPUT_FILES in [0, 1, True, False,
                         None], 'OUTPUT_FILES flag must be a valid binary value'
+assert MIN_K in [MIN_K < MAX_K_exclusive], 'min K must be smaller than max'
+assert MAX_K_exclusive in range(1, 17), 'Only valid range 1-15'
 
 ## Helper Functions
 ################################################################################
@@ -63,6 +67,7 @@ FEATURES_TO_NORMALIZE = [
     'SH',
     'SF',
     'GIDP',
+    'Salary'
 ]
 
 
@@ -91,12 +96,9 @@ def cleanRawData(df: pd.DataFrame) -> pd.DataFrame:
         # 4) Set a [0, 1] clamp on every 'Rate' feature (*rat in the name).
         if 'rat' in label:
             if col.max() > 1:
-                col.where(col <= 1, 1)  #TODO - Not clamping
+                col.where(col <= 1, 1, inplace=True)
             if col.min() < 0:
-                col.where(col >= 0, 0)
-
-    # 4) Normalize all numeric features.    #TODO - Should do.
-
+                col.where(col >= 0, 0, inplace=True)
 
     return df
 
@@ -114,10 +116,19 @@ df_stats = cleanRawData(df_raw)
 report2 = DataQualityReport()
 report2.quickDQR(df_stats, list(df_stats.columns))
 
+# Normalize all numeric features.
+for label in FEATURES_TO_NORMALIZE:
+    df_stats[label] = df_stats[label]/df_stats[label].max()
+report3 = DataQualityReport()
+report3.quickDQR(df_stats, list(df_stats.columns))
+
 if OUTPUT_FILES:
     report1.to_excel(OUTPUT_DQR1)
     report2.to_excel(OUTPUT_DQR2)
+    report3.to_excel(OUTPUT_DQR3)
 
+
+################################
 # Create kNN Model
 training = df_stats.sample(frac=TRAIN_RATIO, random_state=RANDOM_SEED)
 test = df_stats.drop(training.index)
@@ -133,7 +144,7 @@ y_test_lgID = pd.get_dummies(test.lgID, prefix='lg')
 y_test_teamID = pd.get_dummies(test.teamID, prefix='teamID')
 
 
-###############
+################################
 # Train the 'lgID' and 'TeamId' classifiers and calculate accuracy
 rangeK = range(MIN_K, MAX_K_exclusive)
 lgId_accuracy = np.zeros(len(rangeK))
@@ -154,7 +165,7 @@ for i in range(MAX_K_exclusive - MIN_K):
     teamId_accuracy[i] = clf.score(x_test, y_test_teamID)
 
 
-##################
+################################
 # Plot Accuracy charts
 plt.plot(rangeK, lgId_accuracy, 'o', color='black')
 plt.title("MLB League kNN Classification Accuracy")
