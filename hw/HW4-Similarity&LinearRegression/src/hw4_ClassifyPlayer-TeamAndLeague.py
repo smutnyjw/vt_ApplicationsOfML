@@ -26,8 +26,8 @@ from vt_ApplicationsOfML.Libraries.DataExploration.DataQualityReport import \
 DEBUG = False
 OUTPUT_FILES = True
 TRAIN_RATIO = 0.7
-RANDOM_SEED = 22222
-#RANDOM_SEED = 100
+#RANDOM_SEED = 22222
+RANDOM_SEED = 100
 
 # Establish range of k values to compare similarity model accuracy.
 MIN_K = 1
@@ -38,6 +38,8 @@ OUTPUT_DQR1 = '../artifacts/BattingSalaries_1_DQR1.xlsx'
 OUTPUT_DQR2 = '../artifacts/BattingSalaries_1_DQR2.xlsx'
 OUTPUT_DQR3 = '../artifacts/BattingSalaries_1_DQR3_Normalized.xlsx'
 OUTPUT_FILE = '../artifacts/BattingSalaries_EDIT.xlsx'
+OUTPUT_IMAGE = '../artifacts/kNN_Results-seed{}.png'.format(
+    RANDOM_SEED)
 
 # Validate control flags
 assert DEBUG in [0, 1, True, False,
@@ -80,19 +82,13 @@ def cleanRawData(df: pd.DataFrame) -> pd.DataFrame:
 
     # Keep track of number of values effected by each step
     orig_size = len(df)
-    numDropped = 0
     numNULL = 0
     numAbove1 = 0
     numBelow0 = 0
     numHigh = 0
 
-    # 1) Remove all entries that are not from the 2016 season
-    df = df.query("yearID >= 2016")
-    numDropped = orig_size - len(df)
-
     # 2) Drop the quality_flag & source_flag column
     df = df.drop(columns=['playerID', 'yearPlayer'])
-    numDropped = numDropped - len(df)
 
     # 3) Replace all NULL or #N/A values with the median of that feature
     for label in df.columns:
@@ -118,9 +114,9 @@ def cleanRawData(df: pd.DataFrame) -> pd.DataFrame:
             numHigh = numHigh + np.sum(col > 1000)
             col.where(col < 1000, 0, inplace=True)
 
-    print("Data Prep # Changed Values out of {}:\n#Dropped: {}\n#NULL: {}"
+    print("Data Prep # Changed Values out of {}:\n#NULL: {}"
           "\n#AboveOne: {}\n#BelowZero: {}\n#HighValues: {}".format(
-                                                orig_size, numDropped, numNULL,
+                                                orig_size, numNULL,
                                                 numAbove1, numBelow0, numHigh))
 
     print("Data Preparation COMPLETE...")
@@ -133,10 +129,13 @@ def cleanRawData(df: pd.DataFrame) -> pd.DataFrame:
 
 # Load and analyze
 df_raw = pd.read_excel(INPUT_FILE, sheet_name='Batting')
+
+# Data Preparation
+# Remove all entries that are not from the 2016 season
+df_raw = df_raw.query("yearID == 2016")
 report1 = DataQualityReport()
 report1.quickDQR(df_raw, list(df_raw.columns))
 
-# Data Preparation
 df_stats = cleanRawData(df_raw)
 report2 = DataQualityReport()
 report2.quickDQR(df_stats, list(df_stats.columns))
@@ -203,14 +202,22 @@ print("RESULTS: Worst (k/accuracy):\n\tlgId = {}/{}\n\tteamId = {},"
                   worst_k_teamId[0]+1, min(teamId_accuracy)))
 
 # Plot Classification Accuracy chart of both features 'lgID' and 'teamID'.
-fig = plt.figure()
-id_scatter = fig.add_subplot(111)
+fig, scat1 = plt.subplots()
 
-id_scatter.scatter(rangeK, lgId_accuracy, marker='o', label='lg')
-id_scatter.scatter(rangeK, teamId_accuracy, marker='^', label='team')
-plt.title("kNN Accuracy of MLB Player Teams & League Affiliation - seed {"
-          "}".format(RANDOM_SEED))
-plt.xlabel("k (# of Nearest Neighbors)")
-plt.ylabel("Accuracy of BOTH Classifications")
-plt.legend(loc='best')
+scat1.scatter(rangeK, lgId_accuracy, marker='o', c='blue', label='lgID')
+scat1.set_ylim([min(lgId_accuracy)*0.50, 1])
+scat1.set_xlabel("k (# of Nearest Neighbors)")
+scat1.set_ylabel("Classification Accuracy of lgID")
+scat1.legend(loc='upper left')
+
+scat2 = scat1.twinx()
+scat2.scatter(rangeK, teamId_accuracy, marker='^', c='orange', label='teamID')
+scat2.set_ylim([-0.01, max(teamId_accuracy)*3])
+scat2.set_ylabel("Classification Accuracy of TeamID")
+plt.title("kNN Accuracy of MLB Player Teams & League Affiliation - seed "
+            "{}".format(RANDOM_SEED))
+scat2.legend(loc='upper right')
 plt.show()
+
+if OUTPUT_FILES:
+    fig.savefig(OUTPUT_IMAGE, format='png', dpi=100)
