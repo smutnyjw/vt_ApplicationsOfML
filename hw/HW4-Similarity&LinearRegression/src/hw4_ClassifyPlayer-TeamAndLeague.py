@@ -17,14 +17,14 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# Group K project 1 libraries
+# Local libraries
 from vt_ApplicationsOfML.Libraries.DataExploration.DataQualityReport import \
     DataQualityReport
 
 ## Control flags and constants
 ################################################################################
 DEBUG = False
-OUTPUT_FILES = False
+OUTPUT_FILES = True
 TRAIN_RATIO = 0.7
 RANDOM_SEED = 22222
 #RANDOM_SEED = 100
@@ -33,10 +33,10 @@ RANDOM_SEED = 22222
 MIN_K = 1
 MAX_K_exclusive = 16
 
-INPUT_FILE = '../Info&Data/BattingSalaries_cut.xlsx'
-OUTPUT_DQR1 = '../artifacts/BattingSalaries_DQR1.xlsx'
-OUTPUT_DQR2 = '../artifacts/BattingSalaries_DQR2.xlsx'
-OUTPUT_DQR3 = '../artifacts/BattingSalaries_DQR3_Normalized.xlsx'
+INPUT_FILE = '../Info&Data/BattingSalaries.xlsx'
+OUTPUT_DQR1 = '../artifacts/BattingSalaries_1_DQR1.xlsx'
+OUTPUT_DQR2 = '../artifacts/BattingSalaries_1_DQR2.xlsx'
+OUTPUT_DQR3 = '../artifacts/BattingSalaries_1_DQR3_Normalized.xlsx'
 OUTPUT_FILE = '../artifacts/BattingSalaries_EDIT.xlsx'
 
 # Validate control flags
@@ -166,15 +166,13 @@ for i in range(MAX_K_exclusive - MIN_K):
 
 
 ################################
-# Plot Accuracy charts
-plt.plot(rangeK, lgId_accuracy, 'o', color='black')
-plt.title("MLB League kNN Classification Accuracy")
-plt.xlabel("k (# of Nearest Neighbors)")
-plt.ylabel("Accuracy of Classification")
-plt.show()
+# Plot Classification Accuracy chart of both features 'lgID' and 'teamID'.
+fig = plt.figure()
+id_scatter = fig.add_subplot(111)
 
-plt.plot(rangeK, teamId_accuracy, 'o', color='blue')
-plt.title("MLB Team kNN Classification Accuracy")
+id_scatter.scatter(rangeK, lgId_accuracy, marker='o', label='lg')
+id_scatter.scatter(rangeK, teamId_accuracy, marker='^', label='team')
 plt.xlabel("k (# of Nearest Neighbors)")
-plt.ylabel("Accuracy of Classification")
+plt.ylabel("Accuracy of BOTH Classifications")
+plt.legend(loc='best')
 plt.show()

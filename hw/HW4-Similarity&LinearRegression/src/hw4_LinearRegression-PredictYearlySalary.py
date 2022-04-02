@@ -155,13 +155,8 @@ print("LinearRegression r2 & MSE: {} & {}".format(r2, mse))
 
 ################################
 # Create Linear Regression model for each year
-
-#accuracy_by_year = pd.dataframe(data=none, columns=['yearID', 'r2', 'mse'])
-#accuracy_by_year = {}
 r2_by_year = {}
 mse_by_year = {}
-earliestYr = df_stats['yearID'].min()
-latestYr = df_stats['yearID'].max()
 
 for yr in df_stats['yearID'].unique():
     dataYr = df_stats[df_stats['yearID'] == yr]
@@ -178,11 +173,8 @@ for yr in df_stats['yearID'].unique():
     mlr.fit(train_x, train_y)
 
     # Determine Accuracy measures (r2 & MSE)
-    r2 = mlr.score(test_x, test_y)
-    mse = metrics.mean_squared_error(test_y, mlr.predict(test_x))
-    #accuracy_by_year[yr]
-    r2_by_year[yr] = r2
-    mse_by_year[yr] = mse
+    r2_by_year[yr] = mlr.score(test_x, test_y)
+    mse_by_year[yr] = metrics.mean_squared_error(test_y, mlr.predict(test_x))
     print("Accuracy: {} - {}/{}".format(yr, r2_by_year[yr],
                                         mse_by_year[yr]))
 
