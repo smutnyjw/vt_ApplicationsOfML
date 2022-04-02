@@ -25,12 +25,12 @@ from vt_ApplicationsOfML.Libraries.DataExploration.DataQualityReport import \
 ## Control flags and constants
 ################################################################################
 DEBUG = False
-OUTPUT_FILES = False
+OUTPUT_FILES = True
 TRAIN_RATIO = 0.7
 RANDOM_SEED = 22222
-# RANDOM_SEED = 100
+#RANDOM_SEED = 100
 
-INPUT_FILE = '../Info&Data/BattingSalaries_cut.xlsx'
+INPUT_FILE = '../Info&Data/BattingSalaries.xlsx'
 OUTPUT_DQR1 = '../artifacts/BattingSalaries_2_DQR1.xlsx'
 OUTPUT_DQR2 = '../artifacts/BattingSalaries_2_DQR2.xlsx'
 OUTPUT_DQR3 = '../artifacts/BattingSalaries_2_DQR3_OneHotEncoding.xlsx'
@@ -67,20 +67,32 @@ FEATURES_TO_NORMALIZE = [
 ################################################################################
 
 def cleanRawData(df: pd.DataFrame) -> pd.DataFrame:
-    # 1) Drop the quality_flag & source_flag column
-    df = df.drop(columns=['playerID', 'yearPlayer'])
+    ''' Clean undesired data from the inputted data '''
+    print("Begin Data Preparation...")
 
-    # 2) Replace all NULL or #N/A values with the median of that feature
+    # Keep track of number of values effected by each step
+    orig_size = len(df)
+    numDropped = 0
     numNULL = 0
     numAbove1 = 0
     numBelow0 = 0
     numHigh = 0
 
+    # TODO - Why is teamID = 35 after processing?
+
+    # 1) Drop the quality_flag & source_flag column
+    df = df.drop(columns=['playerID', 'yearPlayer'])
+    numDropped = orig_size - len(df)        #TODO - Why is this 0?
+
+    # TODO - Consider dropping any entry where the salary is 0. I cannot
+    #  replace with over mean or median. It would have to be based on the year.
+
+    # 2) Replace all NULL or #N/A values with the median of that feature
     for label in df.columns:
         col = df[label]
 
         if col.isnull().sum() != 0:
-            numNULL = numNULL + col.isnull().sum()
+            numNULL = numNULL + col.isnull().sum()  #TODO - Why is this 200505?
             medianV = col.median()
             df[label] = col.fillna(medianV)
 
@@ -99,8 +111,12 @@ def cleanRawData(df: pd.DataFrame) -> pd.DataFrame:
             numHigh = numHigh + np.sum(col > 1000)
             col.where(col < 1000, 0, inplace=True)
 
-    print("Data Prep # Changed Values:\n#NULL: {}\n#AboveOne: {}\n#BelowZero: "
-          "{}\n#HighValues: {}".format(numNULL, numAbove1, numBelow0, numHigh))
+    print("Data Prep # Changed Values out of {}:\n#Dropped: {}\n#NULL: {}\n"
+          "#AboveOne: {}\n#BelowZero: {}\n#HighValues: {}".format(
+                                        orig_size, numDropped, numNULL,
+                                        numAbove1, numBelow0, numHigh))
+
+    print("Data Preparation COMPLETE...")
 
     return df
 
@@ -182,7 +198,8 @@ for yr in df_stats['yearID'].unique():
 # Plot MSE over year to determine the most predictable salary year.
 plt.plot(mse_by_year.keys(), list(mse_by_year.values()), 'o',
          color='black')
-plt.title("MSE of Predicting MLB Player Salary by Year")
+plt.title("MSE of Predicting MLB Player Salary by Year - seed {}".format(
+                                                                RANDOM_SEED))
 plt.xlabel("Year")
-plt.ylabel("Mean Square Error")
+plt.ylabel("Mean Square Error")     # TODO - Why is the MSE for 2017+ 0.0?
 plt.show()
