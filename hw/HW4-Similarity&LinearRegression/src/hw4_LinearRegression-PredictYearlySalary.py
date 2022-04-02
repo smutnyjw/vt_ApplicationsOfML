@@ -34,7 +34,10 @@ INPUT_FILE = '../Info&Data/BattingSalaries.xlsx'
 OUTPUT_DQR1 = '../artifacts/BattingSalaries_2_DQR1.xlsx'
 OUTPUT_DQR2 = '../artifacts/BattingSalaries_2_DQR2.xlsx'
 OUTPUT_DQR3 = '../artifacts/BattingSalaries_2_DQR3_OneHotEncoding.xlsx'
-OUTPUT_FILE = '../artifacts/BattingSalaries_EDIT.xlsx'
+OUTPUT_R2 = '../artifacts/results_r2.xlsx'
+OUTPUT_MSE = '../artifacts/results_mse.xlsx'
+OUTPUT_IMAGE = '../artifacts/linearRegressionResults-seed{}.png'.format(
+    RANDOM_SEED)
 
 ## Helper Functions
 ################################################################################
@@ -71,32 +74,34 @@ def cleanRawData(df: pd.DataFrame) -> pd.DataFrame:
     print("Begin Data Preparation...")
 
     # Keep track of number of values effected by each step
-    orig_size = len(df)
+    orig_length = len(df)
+    orig_size = len(df) * len(df.columns)
     numDropped = 0
     numNULL = 0
     numAbove1 = 0
     numBelow0 = 0
     numHigh = 0
 
-    # TODO - Why is teamID = 35 after processing?
-
     # 1) Drop the quality_flag & source_flag column
     df = df.drop(columns=['playerID', 'yearPlayer'])
-    numDropped = orig_size - len(df)        #TODO - Why is this 0?
+    numDropped = orig_size - len(df) * len(df.columns)
 
+    # 2) Drop any player with salary of zero.
+    numDropped = numDropped + len(df[df['Salary'] == 0].sum())
+    df = df.query("Salary != 0")
     # TODO - Consider dropping any entry where the salary is 0. I cannot
     #  replace with over mean or median. It would have to be based on the year.
 
-    # 2) Replace all NULL or #N/A values with the median of that feature
+    # 3) Replace all NULL or #N/A values with the median of that feature
     for label in df.columns:
         col = df[label]
 
         if col.isnull().sum() != 0:
-            numNULL = numNULL + col.isnull().sum()  #TODO - Why is this 200505?
+            numNULL = numNULL + col.isnull().sum()
             medianV = col.median()
             df[label] = col.fillna(medianV)
 
-        # 3) Set a [0, 1] clamp on every 'Rate' feature (*rat in the name).
+        # 4) Set a [0, 1] clamp on every 'Rate' feature (*rat in the name).
         if 'rat' in label:
             if col.max() > 1:
                 numAbove1 = numAbove1 + np.sum(col > 1)
@@ -105,7 +110,7 @@ def cleanRawData(df: pd.DataFrame) -> pd.DataFrame:
                 numBelow0 = numBelow0 + np.sum(col < 0)
                 col.where(col >= 0, 0, inplace=True)
 
-        # 4) Check for invalidly high values (>1000) replace with 0
+        # 5) Check for invalidly high values (>1000) replace with 0
         if type(col[col.first_valid_index()]) != str and \
                 label != 'Salary' and label != 'yearID':
             numHigh = numHigh + np.sum(col > 1000)
@@ -193,6 +198,13 @@ for yr in df_stats['yearID'].unique():
     mse_by_year[yr] = metrics.mean_squared_error(test_y, mlr.predict(test_x))
     print("Accuracy: {} - {}/{}".format(yr, r2_by_year[yr],
                                         mse_by_year[yr]))
+
+# Publish 'accuracy by year' results
+if OUTPUT_FILES:
+    df_r2 = pd.DataFrame(data=r2_by_year, index=[0])
+    df_r2.to_excel(OUTPUT_R2)
+    df_mse = pd.DataFrame(data=mse_by_year, index=[0])
+    df_mse.to_excel(OUTPUT_MSE)
 
 ################################
 # Plot MSE over year to determine the most predictable salary year.
