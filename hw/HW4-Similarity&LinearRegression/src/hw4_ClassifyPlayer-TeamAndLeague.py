@@ -2,7 +2,7 @@
 @package    HW4-Similarity&linearRegression
 @fileName   hw4_ClassifyPlayer-TeamAndLeague
 @author     John Smutny
-@date       04/05/2022
+@date       04/03/2022
 @info       Create a script that will predict a 2016 player's league
             affiliation and team affiliation based on the player's batting
             statistics & salary by using a k-NearestNeighbor Classification
@@ -83,6 +83,7 @@ def cleanRawData(df: pd.DataFrame) -> pd.DataFrame:
     # Keep track of number of values effected by each step
     orig_size = len(df)
     numNULL = 0
+    numRatNULL = 0
     numAbove1 = 0
     numBelow0 = 0
     numHigh = 0
@@ -90,23 +91,30 @@ def cleanRawData(df: pd.DataFrame) -> pd.DataFrame:
     # 2) Drop the quality_flag & source_flag column
     df = df.drop(columns=['playerID', 'yearPlayer'])
 
-    # 3) Replace all NULL or #N/A values with the median of that feature
+
     for label in df.columns:
         col = df[label]
 
-        if col.isnull().sum() != 0:
-            numNULL = numNULL + col.isnull().sum()
-            medianV = col.median()
-            df[label] = col.fillna(medianV)
-
-        # 4) Set a [0, 1] clamp on every 'Rate' feature (*rat in the name).
+        # Refine the 'rate' values
         if 'rat' in label:
+            # 3) Set a [0, 1] clamp on every 'Rate' feature (*rat in the name)
             if col.max() > 1:
                 numAbove1 = numAbove1 + np.sum(col > 1)
                 col.where(col <= 1, 1, inplace=True)
             if col.min() < 0:
                 numBelow0 = numBelow0 + np.sum(col < 0)
                 col.where(col >= 0, 0, inplace=True)
+
+            # 4) Replace all null 'Rate' values with zero (*rat in the name).
+            if col.isnull().sum() != 0:
+                numRatNULL = numRatNULL + col.isnull().sum()
+                df[label] = col.fillna(0)
+
+        # 5) Replace non-rat NULL or #N/A values with the median of that feature
+        elif col.isnull().sum() != 0:
+            numNULL = numNULL + col.isnull().sum()
+            medianV = col.median()
+            df[label] = col.fillna(medianV)
 
         # 5) Check for invalidly high values (>1000) replace with 0
         if type(col[col.first_valid_index()]) != str and \
