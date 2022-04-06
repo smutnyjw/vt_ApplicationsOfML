@@ -2,7 +2,7 @@
 @package    HW4-Similarity&linearRegression
 @fileName   hw4_LinearRegression-PredictYearlySalary
 @author     John Smutny
-@date       04/05/2022
+@date       04/03/2022
 @info       Create a script that will predict the salary of a player for any
             given year included in the dataset. Use a multivariate linear
             regression model to predict the salary for each year.
@@ -77,7 +77,9 @@ def cleanRawData(df: pd.DataFrame) -> pd.DataFrame:
     orig_length = len(df)
     orig_size = len(df) * len(df.columns)
     numDropped = 0
-    numNULL = 0
+    numRatNULL = 0
+    numSalaryPost2016 = 0
+    numSalaryNULL = 0
     numAbove1 = 0
     numBelow0 = 0
     numHigh = 0
@@ -89,20 +91,26 @@ def cleanRawData(df: pd.DataFrame) -> pd.DataFrame:
     # 2) Drop any player with salary of zero.
     numDropped = numDropped + len(df[df['Salary'] == 0].sum())
     df = df.query("Salary != 0")
-    # TODO - Consider dropping any entry where the salary is 0. I cannot
-    #  replace with over mean or median. It would have to be based on the year.
 
-    # 3) Replace all NULL or #N/A values with the median of that feature
+    # 2) Drop all data entries 2017 & later
+    numSalaryPost2016 = numSalaryPost2016 + len(df.query("yearID >= 2017"))
+
+    # 3) Replace any NULL salaries with that year's median
+    df.query("yearID < 2017", inplace=True) #TODO - TEST
+    numSalaryNULL = numSalaryNULL + df['Salary'].isnull().sum()
+
+    for yr in df['yearID'].unique():
+        medianV = df[df['yearID'] == yr]['Salary'].median()
+        yrSalary = df[df['yearID'] == yr]['Salary']
+        df.loc[df['yearID'] == yr, 'Salary'] = yrSalary.fillna(medianV)
+
+    # Refine values based on the batting statistic
     for label in df.columns:
         col = df[label]
 
-        if col.isnull().sum() != 0:
-            numNULL = numNULL + col.isnull().sum()
-            medianV = col.median()
-            df[label] = col.fillna(medianV)
-
-        # 4) Set a [0, 1] clamp on every 'Rate' feature (*rat in the name).
+        # Refine the 'rate' values
         if 'rat' in label:
+            # 4) Set a [0, 1] clamp on every 'Rate' feature (*rat in the name).
             if col.max() > 1:
                 numAbove1 = numAbove1 + np.sum(col > 1)
                 col.where(col <= 1, 1, inplace=True)
@@ -110,15 +118,22 @@ def cleanRawData(df: pd.DataFrame) -> pd.DataFrame:
                 numBelow0 = numBelow0 + np.sum(col < 0)
                 col.where(col >= 0, 0, inplace=True)
 
-        # 5) Check for invalidly high values (>1000) replace with 0
+            # 5) Replace all null 'Rate' values with zero (*rat in the name).
+            if col.isnull().sum() != 0:
+                numRatNULL = numRatNULL + col.isnull().sum()
+                df[label] = col.fillna(0)
+
+        # 6) Check for invalidly high values (>1000) replace with 0
         if type(col[col.first_valid_index()]) != str and \
                 label != 'Salary' and label != 'yearID':
             numHigh = numHigh + np.sum(col > 1000)
             col.where(col < 1000, 0, inplace=True)
 
-    print("Data Prep # Changed Values out of {}:\n#Dropped: {}\n#NULL: {}\n"
+    print("Data Prep # Changed Values out of {}:\n#Dropped: {}\n#RatNULL: {}"
+          "\n#SalaryNULL: {}\n#SalaryPost2016: {}\n"
           "#AboveOne: {}\n#BelowZero: {}\n#HighValues: {}".format(
-                                        orig_size, numDropped, numNULL,
+                                        orig_size, numDropped, numRatNULL,
+                                        numSalaryNULL, numSalaryPost2016,
                                         numAbove1, numBelow0, numHigh))
 
     print("Data Preparation COMPLETE...")
@@ -196,8 +211,8 @@ for yr in df_stats['yearID'].unique():
     # Determine Accuracy measures (r2 & MSE)
     r2_by_year[yr] = mlr.score(test_x, test_y)
     mse_by_year[yr] = metrics.mean_squared_error(test_y, mlr.predict(test_x))
-    print("Accuracy: {} - {}/{}".format(yr, r2_by_year[yr],
-                                        mse_by_year[yr]))
+    print("Accuracy: {} - {}/{} from {}".format(yr, r2_by_year[yr],
+                                        mse_by_year[yr], len(dataYr)))
 
 # Publish 'accuracy by year' results
 if OUTPUT_FILES:
@@ -213,5 +228,5 @@ plt.plot(mse_by_year.keys(), list(mse_by_year.values()), 'o',
 plt.title("MSE of Predicting MLB Player Salary by Year - seed {}".format(
                                                                 RANDOM_SEED))
 plt.xlabel("Year")
-plt.ylabel("Mean Square Error")     # TODO - Why is the MSE for 2017+ 0.0?
+plt.ylabel("Mean Square Error")
 plt.show()
