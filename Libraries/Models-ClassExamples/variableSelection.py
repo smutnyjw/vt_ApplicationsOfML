@@ -1,5 +1,5 @@
 """
-nearestNeighbor.py, Created on Thu Feb 20 17:41:33 2020
+variableSelection.py, Created on Thu Feb 20 17:41:33 2020
 @author:    crjones4
 @info:      Code example created from Dr Creed Jones of Virginia Tech,
             lecture 17 - Variable Selection
