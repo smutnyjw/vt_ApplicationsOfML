@@ -20,7 +20,7 @@ X = dataFrame.drop(["ID", "Draft"], axis=1)
 y = dataFrame.Draft
 newX = [5, 4] # define new data as a list, can be an array as well
 
-####
+#################################################
 # METHOD 1: Manual calculation of distances to determine closest neighbor
 ###
 minDist = 100000
@@ -37,7 +37,7 @@ print("Min at", minRow)
 print(minDist, minTarget)
 
 
-####
+#################################################
 # METHOD 2: Using sklearn to determine closest neighbor
 ###
 # Now solve the problem using the enarest neignbor class
