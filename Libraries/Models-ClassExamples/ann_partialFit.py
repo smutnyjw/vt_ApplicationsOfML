@@ -28,10 +28,13 @@ scalerX.fit(X)
 
 X = scalerX.transform(X)
 Y = dataFrame[targetName].to_numpy()
-trainX, trainY, validX, validY, testX, testY = \
-modelsel.train_test_split(X, Y,
-                          valid_size=0.1, test_size=0.2,
-                          random_state=24061)
+
+trainX, testX, trainY, testY = modelsel.train_test_split(X, Y,
+                                                         test_size=0.2,
+                                                         random_state=24061)
+trainX, validX, trainY, validY = modelsel.train_test_split(trainX, trainY,
+                                                           test_size=0.25,
+                                                           random_state=24061)
 
 # Solve the problem using an artificial neural network
 hl = (150, 150) # was (15,15)
