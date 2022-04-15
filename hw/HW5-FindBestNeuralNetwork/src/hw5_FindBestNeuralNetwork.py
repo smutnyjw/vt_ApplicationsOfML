@@ -30,24 +30,36 @@ from vt_ApplicationsOfML.Libraries.DataExploration.DataQualityReport import \
 ## Program settings
 ################################################################################
 
-DEBUG = False
-OUTPUT_FILES = True
 TRAIN_DATA = 0.8
 TEST_DATA = 0.2
 VALID_DATA_FROM_TRAIN = 0.25
 RANDOM_SEED = 23
-DATA_USE_RATIO = 0.1
+
+DEBUG = False
+OUTPUT_FILES = True
+DATA_USE_RATIO = 1
 
 # Neural Network Qualities to be tested.
-RANGE_HL = range(1, 4)          #range(1, 3)
-RANGE_NODES = range(1, 4)      #range(1, 10)
-RANGE_ActFcts = ['relu']      #['relu', 'logistic', 'identity', 'tanh']
+RANGE_HL = range(1, 4)  # Range: 1-3
+RANGE_NODES = range(1, 11)  # Range: 1-10
+RANGE_ActFcts = ['relu', 'logistic', 'identity', 'tanh']
 
 # Universal ANN training settings for all model variations
 SOLVER = 'adam'
-MAX_ITER = 10
+MAX_ITER = 10000
 LEARNING_RATE = 0.0001
 EARLY_STOPPING = True
+
+# Values used for debugging only. Overwrite if Debugging.
+if DEBUG:
+    DATA_USE_RATIO = 0.1
+
+    # Neural Network Qualities to be tested.
+    RANGE_HL = range(1, 4)
+    RANGE_NODES = range(1, 4)
+    RANGE_ActFcts = ['relu']
+
+    MAX_ITER = 10
 
 
 ## Control flags and constants
