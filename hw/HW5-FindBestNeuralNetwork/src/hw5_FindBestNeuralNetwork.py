@@ -48,6 +48,7 @@ RANGE_ActFcts = ['relu', 'logistic', 'identity', 'tanh']
 SOLVER = 'adam'
 MAX_ITER = 10000
 LEARNING_RATE = 0.0001
+TOLERANCE = 0.0001
 EARLY_STOPPING = True
 
 # Values used for debugging only. Overwrite if Debugging.
@@ -102,14 +103,18 @@ def prepareData(df: pd.DataFrame) -> [pd.DataFrame, pd.DataFrame]:
 
 
 def trainAndLogANN(hl, activationFct, trainXY, testXY):
+    # Train a single MLP given the user settings and hl/activationFct
+    # combination.
     clf = ann.MLPRegressor(hidden_layer_sizes=hl,
                            activation=activationFct,
                            solver=SOLVER,
                            alpha=LEARNING_RATE,
                            early_stopping=EARLY_STOPPING,
                            max_iter=MAX_ITER,
-                           validation_fraction=0.42)
+                           validation_fraction=VALID_DATA_FROM_TRAIN,
+                           tol=TOLERANCE)
 
+    # Record the performance of the model trained.
     clf.fit(trainXY[0], trainXY[1])
     annPredY = clf.predict(testXY[0])
     mse = metrics.mean_squared_error(testXY[1], annPredY)
@@ -147,26 +152,30 @@ def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
     id = 0
 
     # Begin for loop iteration
+    print("-- Begin Model Evaluation - Sit back and relax -- ")
     for fct in actFcts:
 
         # Define how many hidden layers are in this iteration
         for numHLs in hls:
             # Define the max number of nodes per HL are in this iteration
-            #for maxNumNodes in range(len(RANGE_NODES)):
             maxNumNodes = len(nodes)
 
             # Generate a counter to set the number of nodes in each HL
             for i in range(((maxNumNodes)**numHLs)):
                 hl[0] = i % (maxNumNodes) + 1
 
-                if numHLs > 1:
-                    hl[1] = int(i/maxNumNodes) % (maxNumNodes) + 1
+                # Loop through indices of each Hidden Layer.
+                for j in range(1, numHLs):
+                    hl[j] = int(i / maxNumNodes**j) % (maxNumNodes) + 1
 
-                if numHLs > 2:
-                    hl[2] = int(i/((maxNumNodes**2))) + 1
+                #print("Instance {}/{}/{}: {}".format(
+                #     numHLs, maxNumNodes, i, hl[0:numHLs]))
 
-                [auroc, mse] = trainAndLogANN(hl[1:numHLs], fct, trainXY,
+                # Train the model and record the performance metrics
+                [auroc, mse] = trainAndLogANN(hl[0:numHLs], fct, trainXY,
                                               testXY)
+
+                # TODO - Make this insertion dynamic with size of hls.
                 entry = [id, fct, numHLs, hl[0], hl[1], hl[2],
                          auroc, mse]
                 #print("Entry: {}".format(entry))
@@ -180,6 +189,7 @@ def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
             (actFcts.index(fct)+1)/len(actFcts)*100))
 
     return [df_error]
+
 
 def outputBestANNs(df: pd.DataFrame):
     id_min_mse = df[['MSE']].idxmin()
