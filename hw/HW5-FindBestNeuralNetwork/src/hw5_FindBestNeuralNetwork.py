@@ -31,7 +31,7 @@ from vt_ApplicationsOfML.Libraries.DataExploration.DataQualityReport import \
 ################################################################################
 
 DEBUG = False
-OUTPUT_FILES = False
+OUTPUT_FILES = True
 TRAIN_DATA = 0.8
 TEST_DATA = 0.2
 VALID_DATA_FROM_TRAIN = 0.25
@@ -43,8 +43,9 @@ RANGE_HL = range(1, 4)          #range(1, 3)
 RANGE_NODES = range(1, 4)      #range(1, 10)
 RANGE_ActFcts = ['relu']      #['relu', 'logistic', 'identity', 'tanh']
 
+# Universal ANN training settings for all model variations
 SOLVER = 'adam'
-MAX_ITER = 1000
+MAX_ITER = 10
 LEARNING_RATE = 0.0001
 EARLY_STOPPING = True
 
@@ -55,7 +56,10 @@ EARLY_STOPPING = True
 INPUT_FILE = '../data/ccpp.xlsx'
 INPUT_SHEET = 'allBin'
 OUTPUT_DQR = '../artifacts/ccpp_DQR.xlsx'
-OUTPUT_ANN_STATS = '../artifacts/results_ann_stats.xlsx'
+OUTPUT_BEST_AUROC = '../artifacts/bestANNs_AUROC.xlsx'
+OUTPUT_WORST_AUROC = '../artifacts/worstANNs_AUROC.xlsx'
+OUTPUT_BEST_MSE = '../artifacts/bestANNs_MSE.xlsx'
+OUTPUT_WORST_MSE = '../artifacts/worstANNs_MSE.xlsx'
 OUTPUT_IMAGE = '../artifacts/linearRegressionResults-seed{}.png'.format(
     RANDOM_SEED)
 
@@ -96,14 +100,8 @@ def trainAndLogANN(hl, activationFct, trainXY, testXY):
 
     clf.fit(trainXY[0], trainXY[1])
     annPredY = clf.predict(testXY[0])
-    #trainingLoss = np.asarray(clf.loss_curve_)
-    #validationLoss = np.sqrt(1 - np.asarray(clf.validation_scores_))
-    #factor = trainingLoss[1] / validationLoss[1]
-    #validationLoss = validationLoss * factor
     mse = metrics.mean_squared_error(testXY[1], annPredY)
-    #print("\n\rANN: MSE = %f" % mse)
-    auroc = 0
-
+    auroc = metrics.roc_auc_score(testXY[1], annPredY)
 
     return [auroc, mse]
 
@@ -131,7 +129,9 @@ def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
     trainXY = [trainX, trainY]
     testXY = [testX, testY]
 
-
+    # Define an array of empty hidden layers based on the max number of
+    # layers tested.
+    hl = [0] * max(hls)
     id = 0
 
     # Begin for loop iteration
@@ -139,10 +139,6 @@ def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
 
         # Define how many hidden layers are in this iteration
         for numHLs in hls:
-            # Define an array of empty hidden layers based on the max number of
-            # layers tested.
-            hl = [0] * numHLs
-
             # Define the max number of nodes per HL are in this iteration
             #for maxNumNodes in range(len(RANGE_NODES)):
             maxNumNodes = len(nodes)
@@ -157,22 +153,38 @@ def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
                 if numHLs > 2:
                     hl[2] = int(i/((maxNumNodes**2))) + 1
 
-                print("Instance {}/{}/{}: {}".format(
-                    numHLs, maxNumNodes, i, hl))
-
-                [auroc, mse] = trainAndLogANN(hl, fct, trainXY, testXY)
-                entry = [id, fct, numHLs, hl[0], hl[0], hl[0],
+                [auroc, mse] = trainAndLogANN(hl[1:numHLs], fct, trainXY,
+                                              testXY)
+                entry = [id, fct, numHLs, hl[0], hl[1], hl[2],
                          auroc, mse]
-                print("Entry: {}".format(entry))
+                #print("Entry: {}".format(entry))
 
                 df_error.loc[df_error.shape[0]] = entry
 
                 # Increment the count of models trained&Tested
                 id = id + 1
-            print("-----------------")
+
+        print("-- Evaluating: {}% complete".format(
+            (actFcts.index(fct)+1)/len(actFcts)*100))
 
     return [df_error]
 
+def outputBestANNs(df: pd.DataFrame):
+    id_min_mse = df[['MSE']].idxmin()
+    id_min_auroc = df[['AUROC']].idxmin()
+    print("Best Model (MSE): {}".format(
+        df.loc[id_min_mse, :].values.tolist()))
+    print("Best Model (AUROC): {}".format(
+        df.loc[id_min_auroc, :].values.tolist()))
+
+    # Gather top 10 AUROC model architectures
+    if OUTPUT_FILES:
+        df = df.sort_values(by='AUROC')
+        df.head(10).to_excel(OUTPUT_BEST_AUROC)
+        df.tail(10).to_excel(OUTPUT_WORST_AUROC)
+        df = df.sort_values(by='MSE')
+        df.head(10).to_excel(OUTPUT_BEST_MSE)
+        df.tail(10).to_excel(OUTPUT_WORST_MSE)
 
 ## Data Handling Functions
 ################################################################################
@@ -191,6 +203,6 @@ if OUTPUT_FILES:
 # Determine the best artificial Neural Network
 [df_ErrorData] = chooseBestANN(x, y, RANGE_HL, RANGE_NODES, RANGE_ActFcts)
 
+# Output the 10 best MSE and AUROC models
+outputBestANNs(df_ErrorData)
 
-# Plot the best ANN error data.
-#TODO
