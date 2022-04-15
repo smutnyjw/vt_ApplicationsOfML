@@ -149,6 +149,14 @@ def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
     # Define an array of empty hidden layers based on the max number of
     # layers tested.
     hl = [0] * max(hls)
+
+    # Define the max number of nodes per HL are in this iteration
+    maxNumNodes = len(nodes)
+    NUMBER_OF_MODELS = 0
+    for x in range(1, len(hls)+1):
+        NUMBER_OF_MODELS = NUMBER_OF_MODELS + (maxNumNodes**x * len(actFcts))
+
+    print("Number of models: {}".format(NUMBER_OF_MODELS))
     id = 0
 
     # Begin for loop iteration
@@ -157,8 +165,6 @@ def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
 
         # Define how many hidden layers are in this iteration
         for numHLs in hls:
-            # Define the max number of nodes per HL are in this iteration
-            maxNumNodes = len(nodes)
 
             # Generate a counter to set the number of nodes in each HL
             for i in range(((maxNumNodes)**numHLs)):
@@ -168,9 +174,6 @@ def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
                 for j in range(1, numHLs):
                     hl[j] = int(i / maxNumNodes**j) % (maxNumNodes) + 1
 
-                #print("Instance {}/{}/{}: {}".format(
-                #     numHLs, maxNumNodes, i, hl[0:numHLs]))
-
                 # Train the model and record the performance metrics
                 [auroc, mse] = trainAndLogANN(hl[0:numHLs], fct, trainXY,
                                               testXY)
@@ -178,15 +181,13 @@ def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
                 # TODO - Make this insertion dynamic with size of hls.
                 entry = [id, fct, numHLs, hl[0], hl[1], hl[2],
                          auroc, mse]
-                #print("Entry: {}".format(entry))
-
                 df_error.loc[df_error.shape[0]] = entry
 
                 # Increment the count of models trained&Tested
                 id = id + 1
 
-        print("-- Evaluating: {}% complete".format(
-            (actFcts.index(fct)+1)/len(actFcts)*100))
+            print("-- Evaluating: {}% complete".format(
+                                     int(id/NUMBER_OF_MODELS*100)))
 
     return [df_error]
 
