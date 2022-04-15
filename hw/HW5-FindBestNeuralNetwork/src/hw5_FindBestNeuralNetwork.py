@@ -43,6 +43,11 @@ RANGE_HL = range(1, 4)          #range(1, 3)
 RANGE_NODES = range(1, 4)      #range(1, 10)
 RANGE_ActFcts = ['relu']      #['relu', 'logistic', 'identity', 'tanh']
 
+SOLVER = 'adam'
+MAX_ITER = 1000
+LEARNING_RATE = 0.0001
+EARLY_STOPPING = True
+
 
 ## Control flags and constants
 ################################################################################
@@ -80,13 +85,36 @@ def prepareData(df: pd.DataFrame) -> [pd.DataFrame, pd.DataFrame]:
     return [X, Y]
 
 
+def trainAndLogANN(hl, activationFct, trainXY, testXY) -> [pd.DataFrame]:
+    clf = ann.MLPRegressor(hidden_layer_sizes=hl,
+                           activation=activationFct,
+                           solver=SOLVER,
+                           alpha=LEARNING_RATE,
+                           early_stopping=EARLY_STOPPING,
+                           max_iter=MAX_ITER,
+                           validation_fraction=0.42)
+
+    clf.fit(trainXY[0], trainXY[1])
+    annPredY = clf.predict(testXY[0])
+    #trainingLoss = np.asarray(clf.loss_curve_)
+    #validationLoss = np.sqrt(1 - np.asarray(clf.validation_scores_))
+    #factor = trainingLoss[1] / validationLoss[1]
+    #validationLoss = validationLoss * factor
+    mse = metrics.mean_squared_error(testXY[1], annPredY)
+    #print("\n\rANN: MSE = %f" % mse)
+
+    df_entry = pd.DataFrame(['AUROC', 0], ['MSE', mse])
+
+    return df_entry
+
+
 def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
     ann.MLPRegressor, pd.DataFrame]:
 
     # Set up dataframe to collect statistics
     ERROR_HEADER = ['ID', 'ActivationFunction', 'numHiddenLayers',
-              'numNodes_Layer1', 'numNodes_Layer2', 'numNodes_Layer3',
-              'TrainingLoss', 'ValidationLoss', 'MSE']
+                    'numNodes_Layer1', 'numNodes_Layer2', 'numNodes_Layer3',
+                    'AUROC', 'MSE']
     df_error = pd.DataFrame(columns=ERROR_HEADER)
 
     #################################################
@@ -100,39 +128,48 @@ def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
     trainX, testX, trainY, testY = modelsel.train_test_split(x, y,
                                                 test_size=TEST_DATA,
                                                 random_state=RANDOM_SEED)
-    trainX, validX, trainY, validY = modelsel.train_test_split(trainX, trainY,
-                                                test_size=VALID_DATA_FROM_TRAIN,
-                                                random_state=RANDOM_SEED)
+    trainXY = [trainX, trainY]
+    testXY = [testX, testY]
 
-    # Define an array of empty hidden layers based on the max number of
-    # layers tested.
-    hl = [0] * max(hls)
 
-#TODO - Define how the code will assign particular number of nodes to each hl.
+    id = 0
+
     # Begin for loop iteration
     for fct in actFcts:
 
         # Define how many hidden layers are in this iteration
         for numHLs in hls:
+            # Define an array of empty hidden layers based on the max number of
+            # layers tested.
+            hl = [0] * max(hls)
 
             # Define the max number of nodes per HL are in this iteration
             #for maxNumNodes in range(len(RANGE_NODES)):
-            maxNumNodes = len(RANGE_NODES)
+            maxNumNodes = len(nodes)
 
-
-            # Generate a counter to set the hnumber of nodes in each HL
-            for i in range(((maxNumNodes+1)**numHLs)):
-                i = i
+            # Generate a counter to set the number of nodes in each HL
+            for i in range(1, ((maxNumNodes+1)**numHLs)):
                 hl[0] = i % (maxNumNodes+1)
                 hl[1] = int(i/(maxNumNodes+1)) % (maxNumNodes+1)
                 hl[2] = int(i/(((maxNumNodes+1)**2)))
-                print("Instance {}/{}/{}: {}, {}, {}".format(numHLs,
-                                                             maxNumNodes,
-                                                             i,
-                                                             hl[0],
-                                                             hl[1],
-                                                             hl[2]))
+                #print("Instance {}/{}/{}: {}, {}, {}".format(
+                    #numHLs, maxNumNodes, i, hl[0],  hl[1], hl[2]))
+
+
+
+                error = trainAndLogANN(hl[1:maxNumNodes], fct, trainXY, testXY)
+                entry = [id, fct, numHLs, hl[0], hl[0], hl[0],
+                         error[0], error[1]]
+                print("Entry: {}".format(entry))
+
+                df_error.loc[df_error.shape[0]] = entry
+
+                # Increment the count of models trained&Tested
+                id = id + 1
+
             print("-----------------")
+
+    return [0, df_error]
 
 
 
