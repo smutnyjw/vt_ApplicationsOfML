@@ -85,7 +85,7 @@ def prepareData(df: pd.DataFrame) -> [pd.DataFrame, pd.DataFrame]:
     return [X, Y]
 
 
-def trainAndLogANN(hl, activationFct, trainXY, testXY) -> [pd.DataFrame]:
+def trainAndLogANN(hl, activationFct, trainXY, testXY):
     clf = ann.MLPRegressor(hidden_layer_sizes=hl,
                            activation=activationFct,
                            solver=SOLVER,
@@ -102,14 +102,14 @@ def trainAndLogANN(hl, activationFct, trainXY, testXY) -> [pd.DataFrame]:
     #validationLoss = validationLoss * factor
     mse = metrics.mean_squared_error(testXY[1], annPredY)
     #print("\n\rANN: MSE = %f" % mse)
+    auroc = 0
 
-    df_entry = pd.DataFrame(['AUROC', 0], ['MSE', mse])
 
-    return df_entry
+    return [auroc, mse]
 
 
 def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
-    ann.MLPRegressor, pd.DataFrame]:
+    pd.DataFrame]:
 
     # Set up dataframe to collect statistics
     ERROR_HEADER = ['ID', 'ActivationFunction', 'numHiddenLayers',
@@ -141,37 +141,37 @@ def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
         for numHLs in hls:
             # Define an array of empty hidden layers based on the max number of
             # layers tested.
-            hl = [0] * max(hls)
+            hl = [0] * numHLs
 
             # Define the max number of nodes per HL are in this iteration
             #for maxNumNodes in range(len(RANGE_NODES)):
             maxNumNodes = len(nodes)
 
             # Generate a counter to set the number of nodes in each HL
-            for i in range(1, ((maxNumNodes+1)**numHLs)):
-                hl[0] = i % (maxNumNodes+1)
-                hl[1] = int(i/(maxNumNodes+1)) % (maxNumNodes+1)
-                hl[2] = int(i/(((maxNumNodes+1)**2)))
-                #print("Instance {}/{}/{}: {}, {}, {}".format(
-                    #numHLs, maxNumNodes, i, hl[0],  hl[1], hl[2]))
+            for i in range(((maxNumNodes)**numHLs)):
+                hl[0] = i % (maxNumNodes) + 1
 
+                if numHLs > 1:
+                    hl[1] = int(i/maxNumNodes) % (maxNumNodes) + 1
 
+                if numHLs > 2:
+                    hl[2] = int(i/((maxNumNodes**2))) + 1
 
-                error = trainAndLogANN(hl[1:maxNumNodes], fct, trainXY, testXY)
+                print("Instance {}/{}/{}: {}".format(
+                    numHLs, maxNumNodes, i, hl))
+
+                [auroc, mse] = trainAndLogANN(hl, fct, trainXY, testXY)
                 entry = [id, fct, numHLs, hl[0], hl[0], hl[0],
-                         error[0], error[1]]
+                         auroc, mse]
                 print("Entry: {}".format(entry))
 
                 df_error.loc[df_error.shape[0]] = entry
 
                 # Increment the count of models trained&Tested
                 id = id + 1
-
             print("-----------------")
 
-    return [0, df_error]
-
-
+    return [df_error]
 
 
 ## Data Handling Functions
@@ -189,10 +189,7 @@ if OUTPUT_FILES:
 [x, y] = prepareData(df_raw)
 
 # Determine the best artificial Neural Network
-[bestANN, df_ErrorData] = chooseBestANN(x, y,
-                                        RANGE_HL,
-                                        RANGE_NODES,
-                                        RANGE_ActFcts)
+[df_ErrorData] = chooseBestANN(x, y, RANGE_HL, RANGE_NODES, RANGE_ActFcts)
 
 
 # Plot the best ANN error data.
