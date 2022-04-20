@@ -2,7 +2,7 @@
 @package    vt_ApplicationsOfML
 @fileName   hw5_FindBestNeuralnetwork.py
 @author     John Smutny
-@date       04/013/2022
+@date       04/13/2022
 @info       Create a script that will train various Artificial Neural
             Networks and determine which architecture performs the best. The
             ANN models are judged based on AUROC and Misclassification Rate,
@@ -47,8 +47,8 @@ RANGE_ActFcts = ['relu', 'logistic', 'identity', 'tanh']
 # Universal ANN training settings for all model variations
 SOLVER = 'adam'
 MAX_ITER = 10000
-LEARNING_RATE = 0.0001
-TOLERANCE = 0.0001
+LEARNING_RATE = 0.0001 *10
+TOLERANCE = 0.0001 *10
 EARLY_STOPPING = True
 
 # Values used for debugging only. Overwrite if Debugging.
@@ -71,8 +71,8 @@ INPUT_SHEET = 'allBin'
 OUTPUT_DQR = '../artifacts/ccpp_DQR.xlsx'
 OUTPUT_BEST_AUROC = '../artifacts/bestANNs_AUROC.xlsx'
 OUTPUT_WORST_AUROC = '../artifacts/worstANNs_AUROC.xlsx'
-OUTPUT_BEST_MSE = '../artifacts/bestANNs_MSE.xlsx'
-OUTPUT_WORST_MSE = '../artifacts/worstANNs_MSE.xlsx'
+OUTPUT_BEST_MCR = '../artifacts/bestANNs_MisClassRate.xlsx'
+OUTPUT_WORST_MCR = '../artifacts/worstANNs_MisClassRate.xlsx'
 OUTPUT_IMAGE = '../artifacts/linearRegressionResults-seed{}.png'.format(
     RANDOM_SEED)
 
@@ -105,7 +105,7 @@ def prepareData(df: pd.DataFrame) -> [pd.DataFrame, pd.DataFrame]:
 def trainAndLogANN(hl, activationFct, trainXY, testXY):
     # Train a single MLP given the user settings and hl/activationFct
     # combination.
-    clf = ann.MLPRegressor(hidden_layer_sizes=hl,
+    clf = ann.MLPClassifier(hidden_layer_sizes=hl,
                            activation=activationFct,
                            solver=SOLVER,
                            alpha=LEARNING_RATE,
@@ -116,11 +116,29 @@ def trainAndLogANN(hl, activationFct, trainXY, testXY):
 
     # Record the performance of the model trained.
     clf.fit(trainXY[0], trainXY[1])
-    annPredY = clf.predict(testXY[0])
-    mse = metrics.mean_squared_error(testXY[1], annPredY)
-    auroc = metrics.roc_auc_score(testXY[1], annPredY)
+    predictY = clf.predict_proba(testXY[0])
+    predictY = np.array(predictY)
+    predictY = np.insert(predictY, 2, [0]*predictY.shape[0],
+                         axis=1)
 
-    return [auroc, mse]
+    # Process the predictions based on the defined threshold.
+    THRESHOLD = 0.5
+    for i in range(predictY.shape[0]):
+        if predictY[i][1] > THRESHOLD:
+            predictY[i][2] = 1
+        else:
+            predictY[i][2] = 0
+
+    # Factor 1: Area under ROC curve
+    auroc = metrics.roc_auc_score(testXY[1], predictY[:, 2])
+
+    # Factor 2: Misclassification Rate
+    c_matrix = metrics.confusion_matrix(testXY[1], predictY[:, 2])
+    totalWrong = c_matrix[1][0] + c_matrix[0][1]
+    totalCases = c_matrix[0][0] + c_matrix[1][1] + totalWrong
+    misClassRate = totalWrong / totalCases
+
+    return [auroc, misClassRate]
 
 
 def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
@@ -129,7 +147,7 @@ def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
     # Set up dataframe to collect statistics
     ERROR_HEADER = ['ID', 'ActivationFunction', 'numHiddenLayers',
                     'numNodes_Layer1', 'numNodes_Layer2', 'numNodes_Layer3',
-                    'AUROC', 'MSE']
+                    'AUROC', 'MisClassificationRate']
     df_error = pd.DataFrame(columns=ERROR_HEADER)
 
     #################################################
@@ -175,12 +193,12 @@ def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
                     hl[j] = int(i / maxNumNodes**j) % (maxNumNodes) + 1
 
                 # Train the model and record the performance metrics
-                [auroc, mse] = trainAndLogANN(hl[0:numHLs], fct, trainXY,
-                                              testXY)
+                [auroc, misClassRate] = trainAndLogANN(hl[0:numHLs], fct,
+                                                      trainXY, testXY)
 
                 # TODO - Make this insertion dynamic with size of hls.
                 entry = [id, fct, numHLs, hl[0], hl[1], hl[2],
-                         auroc, mse]
+                         auroc, misClassRate]
                 df_error.loc[df_error.shape[0]] = entry
 
                 # Increment the count of models trained&Tested
@@ -193,10 +211,10 @@ def chooseBestANN(x: pd.DataFrame, y: pd.DataFrame, hls, nodes, actFcts) -> [
 
 
 def outputBestANNs(df: pd.DataFrame):
-    id_min_mse = df[['MSE']].idxmin()
+    id_min_mcr = df[['MisClassificationRate']].idxmin()
     id_min_auroc = df[['AUROC']].idxmin()
-    print("Best Model (MSE): {}".format(
-        df.loc[id_min_mse, :].values.tolist()))
+    print("Best Model (MisClassificationRate): {}".format(
+        df.loc[id_min_mcr, :].values.tolist()))
     print("Best Model (AUROC): {}".format(
         df.loc[id_min_auroc, :].values.tolist()))
 
@@ -205,9 +223,9 @@ def outputBestANNs(df: pd.DataFrame):
         df = df.sort_values(by='AUROC')
         df.head(10).to_excel(OUTPUT_BEST_AUROC)
         df.tail(10).to_excel(OUTPUT_WORST_AUROC)
-        df = df.sort_values(by='MSE')
-        df.head(10).to_excel(OUTPUT_BEST_MSE)
-        df.tail(10).to_excel(OUTPUT_WORST_MSE)
+        df = df.sort_values(by='MisClassificationRate')
+        df.head(10).to_excel(OUTPUT_BEST_MCR)
+        df.tail(10).to_excel(OUTPUT_WORST_MCR)
 
 ## Data Handling Functions
 ################################################################################
@@ -226,6 +244,6 @@ if OUTPUT_FILES:
 # Determine the best artificial Neural Network
 [df_ErrorData] = chooseBestANN(x, y, RANGE_HL, RANGE_NODES, RANGE_ActFcts)
 
-# Output the 10 best MSE and AUROC models
+# Output the 10 best MCR and AUROC models
 outputBestANNs(df_ErrorData)
 
