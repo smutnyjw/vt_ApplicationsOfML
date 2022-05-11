@@ -47,7 +47,8 @@ if DEBUG:
 INPUT_FILE = '../data/Taxi_Trip_Data.xlsx'
 OUTPUT_preDQR = '../artifacts/taxi_preDQR.xlsx'
 OUTPUT_postDQR = '../artifacts/taxi_postDQR.xlsx'
-OUTPUT_PLOT = '../artifacts/learningPlot.png'
+OUTPUT_LPLOT = '../artifacts/learningPlot.png'
+OUTPUT_SPLOT = '../artifacts/scatterPlot.png'
 
 DROPPED_FEATURES = ['store_and_fwd_flag', 'PULocationID', 'DOLocationID',
                     'fare_amount', 'extra', 'mta_tax', 'tip_amount',
@@ -84,27 +85,19 @@ def prepData(df: pd.DataFrame) -> pd.DataFrame:
         timeDif = do_time[i] - pu_time[i]
         df.loc[index[i], 'FareTime (sec)'] = timeDif.total_seconds()
 
-        # TODO - add to report solution to wild negative and positive times.
-        #   1) The FareTime is in seconds.
-        #   2) Issue with some pickup & dropoff times being flipped or over
-        #   into the next day (past midnight). 'timedelta' object takes
-        #   absolute time diff.
-
     df = df.drop(['lpep_dropoff_datetime', 'lpep_pickup_datetime'], axis=1)
 
     ###############################################
     # Ensure that all fares collected are not negative. Taxis do not give money.
+    print("Number of negative improvement_surcharge values: {}".format(
+        len(df[df['improvement_surcharge'] < 0])))
     df.loc[:, 'improvement_surcharge'] = abs(df.loc[:, 'improvement_surcharge'])
+    print("Number of negative total_amount values: {}".format(
+        len(df[df['total_amount'] < 0])))
     df.loc[:, 'total_amount'] = abs(df.loc[:, 'total_amount'])
 
     ###############################################
     # Perform One-Hot Encoding on PickUp & DropOff features
-
-    # TODO - Add justification to report
-    # Total entries: 51174
-    # PU Blank or Unknown: 342
-    # DO Blank or Unknown: 764
-    # At most Entries deleted: = 1106 (~2%)
 
     # Remove any entry that has any PU or DO borough as UNKNOWN so locations
     # can be used for one-hot encoding.
@@ -140,20 +133,20 @@ def plotANNLearningCurve(hl, trainingLoss, validationLoss):
     ax.set_xlabel(xlabel, fontsize=10)
     ax.set_ylabel("loss", color="blue", fontsize=10)
     ax.plot(validationLoss, color="red")
-    # ax.set_yscale('log')
-    plt.show()
+    ax.set_yscale('log')
+
+    plt.savefig(OUTPUT_LPLOT)
 
 def plotModelOutput(actualY, modelY):
     # Plot Classification Accuracy chart of both features 'lgID' and 'teamID'.
     fig, scat = plt.subplots()
 
     scat.scatter(actualY.tolist(), modelY.tolist(), marker='o', c='blue')
-    #scat.set_ylim([min(modelY) * 0.50, 1])
     scat.set_xlabel("Actual Taxi Fares ($)")
     scat.set_ylabel("Model Predicted Taxi Fares ($)")
     scat.legend(loc='upper left')
 
-    plt.show()
+    plt.savefig(OUTPUT_SPLOT)
 
 
 def calcMetrics(testY, modelY, name):
@@ -204,12 +197,16 @@ def createANN(df: pd.DataFrame):
     # Record the performance of the model trained.
     clf.fit(trainX, trainY)
     modelY = clf.predict(testX)
+    modelY = scalerY.inverse_transform(modelY.reshape(-1, 1))
     modelY = np.array(modelY)
+    testY = scalerY.inverse_transform(testY)
+    testY = np.array(testY)
 
     # Calculate model metrics
     calcMetrics(testY, modelY, "ANN")
-
-    outputY = np.array(clf.predict(X))
+    modelY = clf.predict(X)
+    modelY = scalerY.inverse_transform(modelY.reshape(-1, 1))
+    outputY = np.array(modelY)
 
     return outputY
 
@@ -237,10 +234,10 @@ def createDT(df: pd.DataFrame):
     ##################################################
     # Train the Decision Tree model
     dt = tree.DecisionTreeClassifier(criterion='entropy',
-                                     max_depth=4)
+                                     max_depth=5)
 
     # Record the performance of the model trained.
-    dt.fit(trainX, trainY)  # TODO - need to make this into integers/bins
+    dt.fit(trainX, trainY)
     #https://pbpython.com/pandas-qcut-cut.html
     modelY = dt.predict(testX)
     modelY = np.array(modelY)
@@ -277,12 +274,15 @@ def createMLR(df: pd.DataFrame):
     mlr.fit(trainX, trainY)
 
     modelY = mlr.predict(testX)
+    modelY = scalerY.inverse_transform(modelY.reshape(-1, 1))
     modelY = np.array(modelY)
+    testY = scalerY.inverse_transform(testY)
+    testY = np.array(testY)
 
     # Calculate model metrics
     calcMetrics(testY, modelY, "MLR")
-
-    outputY = np.array(mlr.predict(X))
+    modelY = scalerY.inverse_transform(mlr.predict(X))
+    outputY = np.array(modelY)
 
     return outputY
 
@@ -305,7 +305,7 @@ def secondStage(df: pd.DataFrame, annY, dtY, mlrY):
     scalerX = preproc.MinMaxScaler(feature_range=[0, 1])
     X = scalerX.fit_transform(X)
 
-    scalerY = preproc.MinMaxScaler(feature_range=(-1, 1))
+    scalerY = preproc.MinMaxScaler(feature_range=[0, 1])
     Y = scalerY.fit_transform(df[[TARGET_FEATURE]])
 
     ##################################################
@@ -323,7 +323,7 @@ def secondStage(df: pd.DataFrame, annY, dtY, mlrY):
     # Train the Multivariate Linear Regression model
     #mlr = linmod.LinearRegression()
     # Train the ANN model
-    hl = [3, 5, 1]
+    hl = [3, 5, 3]
     clf = ann.MLPRegressor(hidden_layer_sizes=hl,
                            activation='relu',
                            solver='adam',
@@ -332,11 +332,12 @@ def secondStage(df: pd.DataFrame, annY, dtY, mlrY):
                            # partial fit.
                            max_iter=10000,
                            validation_fraction=VALID_DATA_FROM_TRAIN,
-                           tol=0.001)
+                           tol=0.001,
+                           random_state=RANDOM_SEED)
 
     trainingLoss = []
     validationLoss = []
-    numEpochs = 10000
+    numEpochs = 1000
     if DEBUG:
         numEpochs = 10
 
@@ -347,14 +348,13 @@ def secondStage(df: pd.DataFrame, annY, dtY, mlrY):
 
     modelY = clf.predict(testX)
     modelY = np.array(modelY)
+    modelY = scalerY.inverse_transform(modelY.reshape(-1, 1))
+    testY = scalerY.inverse_transform(np.array(testY))
 
     # Calculate model metrics
     calcMetrics(testY, modelY, "2ndStage")
 
     plotANNLearningCurve(hl, trainingLoss, validationLoss)
-
-    testY = scalerY.inverse_transform(np.array(testY))
-    modelY = scalerY.inverse_transform(modelY.reshape(-1, 1))
     plotModelOutput(testY, modelY)
 
 
