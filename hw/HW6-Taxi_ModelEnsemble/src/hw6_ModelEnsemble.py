@@ -33,7 +33,7 @@ TEST_DATA = 0.2
 VALID_DATA_FROM_TRAIN = 0.25
 RANDOM_SEED = 5
 
-DEBUG = True
+DEBUG = False
 OUTPUT_FILES = True
 DATA_USE_RATIO = 1
 
@@ -134,6 +134,8 @@ def plotANNLearningCurve(hl, trainingLoss, validationLoss):
     ax.set_ylabel("loss", color="blue", fontsize=10)
     ax.plot(validationLoss, color="red")
     ax.set_yscale('log')
+    plt.legend(loc='upper left')
+    plt.title("Training Loss vs Validation Loss of the 2nd Stage ANN Output")
 
     plt.savefig(OUTPUT_LPLOT)
 
@@ -144,7 +146,15 @@ def plotModelOutput(actualY, modelY):
     scat.scatter(actualY.tolist(), modelY.tolist(), marker='o', c='blue')
     scat.set_xlabel("Actual Taxi Fares ($)")
     scat.set_ylabel("Model Predicted Taxi Fares ($)")
-    scat.legend(loc='upper left')
+    plt.title("Ensemble Model vs Actual Taxi Fare Prices")
+
+    # Keep axis ranges consistent to highlight amount of linear relationship.
+    if max(actualY) > max(modelY):
+        plt.xlim(0, max(actualY)*1.1)
+        plt.ylim(0, max(actualY)*1.1)
+    else:
+        plt.xlim(0, max(modelY)*1.1)
+        plt.ylim(0, max(modelY)*1.1)
 
     plt.savefig(OUTPUT_SPLOT)
 
@@ -184,7 +194,7 @@ def createANN(df: pd.DataFrame):
 
     ##################################################
     # Train the ANN model
-    hl = [5, 10, 2]
+    hl = [6, 8, 4]
     clf = ann.MLPRegressor(hidden_layer_sizes=hl,
                             activation='relu',
                             solver='adam',
@@ -257,7 +267,7 @@ def createMLR(df: pd.DataFrame):
     scalerX = preproc.MinMaxScaler(feature_range=[0, 1])
     X = scalerX.fit_transform(X)
 
-    scalerY = preproc.MinMaxScaler(feature_range=(0, 1))
+    scalerY = preproc.MinMaxScaler(feature_range=(-1, 1))
     Y = scalerY.fit_transform(df[[TARGET_FEATURE]])
 
     ##################################################
@@ -302,10 +312,10 @@ def secondStage(df: pd.DataFrame, annY, dtY, mlrY):
     ##################################################
     # Normalize inputs and outputs
     X = df.drop([TARGET_FEATURE], axis=1).to_numpy()
-    scalerX = preproc.MinMaxScaler(feature_range=[0, 1])
+    scalerX = preproc.MinMaxScaler(feature_range=(0, 1))
     X = scalerX.fit_transform(X)
 
-    scalerY = preproc.MinMaxScaler(feature_range=[0, 1])
+    scalerY = preproc.MinMaxScaler(feature_range=(-1, 1))
     Y = scalerY.fit_transform(df[[TARGET_FEATURE]])
 
     ##################################################
@@ -323,7 +333,7 @@ def secondStage(df: pd.DataFrame, annY, dtY, mlrY):
     # Train the Multivariate Linear Regression model
     #mlr = linmod.LinearRegression()
     # Train the ANN model
-    hl = [3, 5, 3]
+    hl = [4, 5, 2]
     clf = ann.MLPRegressor(hidden_layer_sizes=hl,
                            activation='relu',
                            solver='adam',
@@ -337,7 +347,7 @@ def secondStage(df: pd.DataFrame, annY, dtY, mlrY):
 
     trainingLoss = []
     validationLoss = []
-    numEpochs = 1000
+    numEpochs = 10000
     if DEBUG:
         numEpochs = 10
 
