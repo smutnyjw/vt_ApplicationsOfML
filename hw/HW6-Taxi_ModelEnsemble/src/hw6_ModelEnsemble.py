@@ -2,13 +2,17 @@
 @package    vt_ApplicationsOfML
 @fileName   hw6_ModelEnsemble.py
 @author     John Smutny
-@date       04/28/2022
-@info
+@date       05/12/2022
+@info   Input taxi fare data for New York City and attempt to create a two
+        stage ensemble model to predict a taxi ride's total price. The models
+        used are as follows for each stage; 1) Artificial Neural Network,
+        Multivariate Linear Regression, and Decision Tree all feeding into
+        2) another ANN model.
 
-        Each model will be analyzed based on their MSE, MAE, R2 and EVS.
+        Each model is analyzed based on their MSE, MAE, R2 and EVS.
 
-        Ensemble model will have a scatterplot plotting the learning curve by
-        epoch.
+        Ensemble model produces a scatterplot plotting the learning
+        curve by training epoch.
 '''
 from matplotlib import pyplot as plt
 from sklearn import tree
@@ -230,8 +234,14 @@ def createDT(df: pd.DataFrame):
     #scalerY = preproc.MinMaxScaler(feature_range=(0, 1))
     #Y = scalerY.fit_transform(df[[TARGET_FEATURE]])
     Y = df[TARGET_FEATURE].astype(int)
-    #TODO - Set up binning from TARGET.min to TARGET.max (say... 4 bins)
-    #   Thought - Use 'pd.cut' or 'pd.qcut'
+
+    numbins = 10
+    labels = range(numbins)
+    Y, binsY = pd.qcut(Y, q=numbins, labels=labels, retbins=True)
+    #Y, binsY = pd.cut(Y, bins=numbins, labels=labels, retbins=True)
+
+    print(Y.value_counts())
+    print(binsY)
 
     ##################################################
     # Split Training and Test Data
@@ -347,7 +357,7 @@ def secondStage(df: pd.DataFrame, annY, dtY, mlrY):
 
     trainingLoss = []
     validationLoss = []
-    numEpochs = 10000
+    numEpochs = 1000
     if DEBUG:
         numEpochs = 10
 
