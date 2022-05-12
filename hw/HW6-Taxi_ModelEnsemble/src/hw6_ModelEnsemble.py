@@ -293,6 +293,8 @@ def createMLR(df: pd.DataFrame):
     mlr = linmod.LinearRegression()
     mlr.fit(trainX, trainY)
 
+    print(mlr.coef_)
+
     modelY = mlr.predict(testX)
     modelY = scalerY.inverse_transform(modelY.reshape(-1, 1))
     modelY = np.array(modelY)
