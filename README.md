@@ -15,3 +15,8 @@ Topics Discussed
 10) Logistic Regression
 11) Artifical Neural Networks (many architectures)
 12) Preview: Deep Learning, Support Vector Machines (SVM), Unsupervised Learning, Reinforcement Learning
+
+
+Projects
+1) Comparing Single Model Weather Preditiction - Decision Tree vs MultiVariate Linear Regression
+2) Predicting Future QualComm Stock Price - Choosing best model between Decision Trees, MultiVariate Linear Regression, Logistic Regression, and Artificial Neural Networks.  
