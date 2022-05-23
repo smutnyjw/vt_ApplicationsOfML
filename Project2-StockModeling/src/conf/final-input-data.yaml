@@ -1,0 +1,321 @@
+## Base generic modelling configuration
+---
+
+# Input data settings
+input:
+  raw: data/QCOM_HistoricalData_5yr.csv
+  qcom_profit_loss: data/QCOM-SimFin-ProfitAndLoss.csv
+  inflation: data/InflationRate(updated).csv
+  qcom_balance: data/QCOM-SimFin-CompanyInternalBalance.csv
+  qcom_cashflow: data/QCOM-SimFin-CompanyCashFlow.csv
+  crude_oil: data/globalPriceOfBrentCrudeOil_5yr.csv
+
+# Output settings
+output:
+  prefix: output/final_extended_data_no_past_data_%suffix.csv
+
+# Flow control and data handling settings
+steps:
+  ## Raw base data loading
+  - module: process.prepare.Load
+    input:
+      name: input_raw
+    output:
+      name: raw
+      print: true
+  - module: process.prepare.ConvertTypes
+    args:
+      columns:
+        Date: date
+        Close/Last: currency
+        Open: currency
+        High: currency
+        Low: currency
+    input:
+      name: raw
+    output:
+      name: clean
+      print: true
+      write: true
+  - module: process.prepare.Sort
+    args:
+      sortColumn: Date
+      ascending: True
+    input:
+      name: clean
+    output:
+      name: clean
+  ## QCOM profit/loss data loading
+  - module: process.prepare.Load
+    input:
+      name: input_qcom_profit_loss
+    output:
+      name: qcom_profit_loss_raw
+  - module: process.prepare.ConvertTypes
+    args:
+      columns:
+        Date: date
+        Revenue: float
+        "Cost of revenue": float
+        "Gross Profit": float
+        "Operating Expenses": float
+        "Operating Income (Loss)": float
+        "Non-Operating Income (Loss)": float
+        "Pretax Income (Loss)": float
+        "Income Tax (Expense) Benefit, net": float
+        "Income (Loss) Including Minority Interest": float
+        "Minority Interest": float
+        "Net Income Available to Common Shareholders": float
+    input:
+      name: qcom_profit_loss_raw
+    output:
+      name: qcom_profit_loss_raw
+      write: true
+  - module: process.prepare.InterpolateAndConcatByDate
+    input:
+      name:
+        - 'clean'
+        - 'qcom_profit_loss_raw'
+    args:
+      columns:
+        - "Gross Profit"
+        - "Net Income Available to Common Shareholders"
+      method: linear
+    output:
+      name: clean_extended
+      write: true
+  ## Inflation rate data loading
+  - module: process.prepare.Load
+    input:
+      name: input_inflation
+    output:
+      name: inflation_raw
+  - module: process.prepare.ConvertTypes
+    args:
+      columns:
+        Date: date
+        InflationRate: float
+    input:
+      name: inflation_raw
+    output:
+      name: inflation_raw
+      write: true
+  - module: process.prepare.InterpolateAndConcatByDate
+    input:
+      name:
+        - 'clean_extended'
+        - 'inflation_raw'
+    args:
+      columns:
+        - InflationRate
+      method: linear
+    output:
+      name: clean_extended
+      write: true
+  # QCOM Balance Loading
+  - module: process.prepare.Load
+    input:
+      name: input_qcom_balance
+    output:
+      name: qcom_balance_raw
+  - module: process.prepare.ConvertTypes
+    args:
+      columns:
+        Date: date
+        Assets: float
+        "Cash, Cash Equivalents & Short Term Investments": float
+        "Accounts & Notes Receivable": float
+        Inventories: float
+        "Other Short Term Assets": float
+        "Total Current Assets": float
+        "Property, Plant & Equipment, Net": float
+        "Long Term Investments & Receivables": float
+        "Other Long Term Assets": float
+        "Total Noncurrent Assets": float
+        "Total Assets": float
+        Liabilities: float
+        "Payables & Accruals": float
+        "Short Term Debt": float
+        "Other Short Term Liabilities": float
+        "Total Current Liabilities": float
+        "Long Term Debt": float
+        "Other Long Term Liabilities": float
+        "Total Noncurrent Liabilities": float
+        "Total Liabilities": float
+        "Preferred Equity": float
+        "Share Capital & Additional Paid-In Capital": float
+        "Retained Earnings": float
+        "Other Equity": float
+        "Equity Before Minority Interest": float
+        "Minority Interest": float
+        "Total Equity": float
+        "Total Liabilities & Equity": float
+    input:
+      name: qcom_balance_raw
+    output:
+      name: qcom_balance_raw
+      write: true
+  - module: process.prepare.InterpolateAndConcatByDate
+    input:
+      name:
+        - 'clean_extended'
+        - 'qcom_balance_raw'
+    args:
+      columns:
+        - "Total Assets"
+        - "Total Liabilities"
+      method: linear
+    output:
+      name: clean_extended
+      write: True
+  # QCOM Cashflow loading
+  - module: process.prepare.Load
+    input:
+      name: input_qcom_cashflow
+    output:
+      name: cashflow_raw
+  - module: process.prepare.ConvertTypes
+    args:
+      columns:
+        Date: date
+        "Net Income/Starting Line": float
+        "Depreciation & Amortization": float
+        "Non-Cash Items": float
+        "Change in Working Capital": float
+        "Cash from Operating Activities": float
+        "Change in Fixed Assets & Intangibles": float
+        "Net Change in Long Term Investment": float
+        "Net Cash From Acquisitions & Divestitures": float
+        "Other Investing Activities": float
+        "Cash from Investing Activities": float
+        "Dividends Paid": float
+        "Cash From (Repayment of) Debt": float
+        "Cash From (Repurchase of) Equity": float
+        "Other Financing Activities": float
+        "Cash from Financing Activities": float
+        "Net Cash Before Disc. Operations and FX": float
+        "Change in Cash from Disc. Operations and Other": float
+        "Net Cash Before FX": float
+        "Effect of Foreign Exchange Rates": float
+        "Net Changes in Cash": float
+    input:
+      name: cashflow_raw
+    output:
+      name: cashflow_raw
+      write: true
+  - module: process.prepare.InterpolateAndConcatByDate
+    input:
+      name:
+        - 'clean_extended'
+        - 'cashflow_raw'
+    args:
+      columns:
+        - "Net Income/Starting Line"
+        - "Dividends Paid"
+        - "Net Changes in Cash"
+      method: linear
+    output:
+      name: clean_extended
+      write: true
+  # Brent crude oil loading
+  - module: process.prepare.Load
+    input:
+      name: input_crude_oil
+    output:
+      name: crude_oil_raw
+  - module: process.prepare.Rename
+    args:
+      columns:
+        DATE: Date
+        POILBREUSDM: BrentCrudeOil
+    input:
+      name: crude_oil_raw
+    output:
+      name: crude_oil_raw
+  - module: process.prepare.ConvertTypes
+    args:
+      columns:
+        Date: date
+        BrentCrudeOil: float
+    input:
+      name: crude_oil_raw
+    output:
+      name: crude_oil_raw
+      write: true
+  - module: process.prepare.InterpolateAndConcatByDate
+    input:
+      name:
+        - 'clean_extended'
+        - 'crude_oil_raw'
+    args:
+      columns:
+        - BrentCrudeOil
+      method: linear
+    output:
+      name: clean_extended
+      write: true
+  ## Extended data DQR
+  - module: process.dqr.DQR
+    input:
+      name: clean_extended
+    output:
+      write: true
+      summarize: false
+      print: false
+      name: clean_extended_dqr
+  ## Add day,month,year columns
+  - module: process.prepare.ExpandDate
+    args:
+      column: Date
+    input:
+      name: clean_extended
+    output:
+      name: clean_extended
+  ## Train test split of base with inflation
+  - module: process.augment.AddFutureValueColumn
+    args:
+      sourceColumn: Close/Last
+      targetColumn: CloseFuture
+      rowsInFuture: 28
+      dropRemainingRows: True
+    input:
+      name: clean_extended
+    output:
+      name: clean_extended
+  - module: process.augment.AddColumnDifference
+    args:
+      subtrahendColumn: Close/Last
+      minuendColumn: CloseFuture
+      differenceColumn: FutureGain
+    input:
+      name: clean_extended
+    output:
+      name: clean_extended
+
+## Logging -- modifications most likely not needed
+logging:
+  version: 1
+  redirect: true      # Pipe stdout/err into the logger
+  formatters:
+    simple:
+      format: '%(asctime)s - %(message)s'
+      datefmt: '%Y-%m-%dT%H:%M:%S%z'
+    default: 
+      format: '%(asctime)s - %(levelname)7s - %(name)16s - %(message)s'
+      datefmt: '%Y-%m-%dT%H:%M:%S%z'
+  handlers:
+    console:
+      class: logging.StreamHandler
+      level: DEBUG
+      formatter: default
+      stream: ext://sys.stdout
+  loggers:
+    qualcomm:
+      level: INFO
+      handlers: [console]
+      propagate: no
+    qualcomm.Model:
+      level: DEBUG
+  root:
+    level: INFO
+    handlers: [console]

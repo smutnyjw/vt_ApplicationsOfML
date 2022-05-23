@@ -1,0 +1,15 @@
+statistic,Date,BrentCrudeOil
+count,61,61.0
+cardinality,61,61.0
+mean,,59.887487643978744
+median,,62.5754545454545
+n_at_median,,1.0
+mode,2016-11-01,23.3372727272727
+n_at_mode,1,1.0
+stddev,,12.9736837261074
+min,,23.3372727272727
+n_at_min,,1.0
+max,,83.65
+n_at_max,,1.0
+n_zero,,0.0
+n_missing,0,0.0

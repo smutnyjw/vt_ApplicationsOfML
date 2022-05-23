@@ -1,0 +1,11 @@
+!pip install pandas_datareader
+import datetime
+import pandas_datareader.data as web
+df['Date'] = pd.to_datetime(df.Date,format='%m/%d/%Y')
+df.index = df['Date']
+Date_1= df.index
+df = pd.DataFrame({'Actual': y_test, 'Predicted':Prediction}) 
+df.plot(kind='line',figsize=(18,8))
+plt.grid(which='major', linestyle='-', linewidth='0.5', color='green')
+plt.grid(which='minor', linestyle=':', linewidth='0.5', color='black')
+plt.show()

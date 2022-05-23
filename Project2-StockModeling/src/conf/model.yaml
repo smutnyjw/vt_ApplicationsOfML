@@ -1,0 +1,144 @@
+## Base generic modelling configuration
+---
+
+# Input data settings
+input:
+  raw: data/QCOM_HistoricalData_5yr.csv
+
+# Output settings
+output:
+  prefix: output/qcom_historical_5yr_%suffix.csv
+
+# Flow control and data handling settings
+steps:
+  - module: process.prepare.Load
+    input:
+      name: input_raw
+    output:
+      name: raw
+      print: true
+  - module: process.dqr.DQR
+    input:
+      name: raw
+    output:
+      write: true
+      summarize: false
+      print: false
+      name: raw_dqr
+  - module: process.prepare.Rename
+    args:
+      columns:
+        'Close/Last': close
+        'Date': date_string
+    input:
+      name: raw
+    output:
+      name: raw
+      print: true
+  - module: process.prepare.CapitalizeColumns
+    args:
+      upper: false
+    input:
+      name: raw
+    output:
+      name: raw
+      print: true
+  - module: process.prepare.ExpandDate
+    args:
+      column: date_string
+    input:
+      name: raw
+    output:
+      name: raw
+  - module: process.prepare.ConvertTypes
+    args:
+      columns:
+        date_string: date
+        close: currency
+        open: currency
+        high: currency
+        low: currency
+    input:
+      name: raw
+    output:
+      name: clean
+      print: true
+      write: true
+  - module: process.dqr.DQR
+    input:
+      name: clean
+    output:
+      write: true
+      summarize: false
+      print: true
+      name: clean_dqr
+  - module: process.normalize.Normalize
+    args:
+      columns:
+        - open
+        - high
+        - low
+        - close
+        - volume
+    input:
+      name: clean
+    output:
+      name: normal
+      write: true
+  - module: process.dqr.DQR
+    input:
+      name: normal
+    output:
+      write: true
+      summarize: false
+      print: true
+      name: normal_dqr
+  - module: process.train.TrainTestSplit
+    args:
+      predictors:
+        - volume
+        - open
+        - high
+        - low
+        - close
+      targets:
+        - close
+      test_size: 0.3333
+      seed: 15151
+    input:
+      name: normal
+    output:
+      name: normal_train_test
+      print: true
+
+todo:
+  - module: process.prepare.AppendFutureValue
+  - module: models.???
+
+## Logging -- modifications most likely not needed
+logging:
+  version: 1
+  redirect: true      # Pipe stdout/err into the logger
+  formatters:
+    simple:
+      format: '%(asctime)s - %(message)s'
+      datefmt: '%Y-%m-%dT%H:%M:%S%z'
+    default: 
+      format: '%(asctime)s - %(levelname)7s - %(name)16s - %(message)s'
+      datefmt: '%Y-%m-%dT%H:%M:%S%z'
+  handlers:
+    console:
+      class: logging.StreamHandler
+      level: DEBUG
+      formatter: default
+      stream: ext://sys.stdout
+  loggers:
+    qualcomm:
+      level: INFO
+      handlers: [console]
+      propagate: no
+    qualcomm.Model:
+      level: DEBUG
+  root:
+    level: INFO
+    handlers: [console]
