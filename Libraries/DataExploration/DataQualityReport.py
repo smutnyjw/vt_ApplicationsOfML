@@ -157,15 +157,17 @@ class DataQualityReport:
     # @output str    String of the dataFrame.
     # Des: Create a data quality report dataframe assuming that all input
     # data is numeric.
-    def quickDQR(self, df_data, COLUMN_HEADERS):
-        #report = DataQualityReport()
+    def quickDQR(self, df_data, COLUMN_HEADERS, NON_NUMERIC_HEADERS):
 
-        for thisLabel in COLUMN_HEADERS:  # for each column, report basic stats
+        for thisLabel in COLUMN_HEADERS:
             thisCol = df_data[thisLabel]
-            self.addCol(thisLabel, thisCol)
+            if thisLabel in NON_NUMERIC_HEADERS:
+                self.addCatCol(thisLabel, thisCol)
+            else:
+                self.addCol(thisLabel, thisCol)
 
         print("::quickDQF() - DataQualityReport complete. Please use '<DQR "
-              "Object Name>.to_string() to print results")
+              "Object Name>.to_string() to print results or .to_csv()")
 
     ##################################################################
     # @output str    String of the dataFrame.
