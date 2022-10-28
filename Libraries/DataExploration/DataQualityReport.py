@@ -24,6 +24,7 @@
 #       statsdf data frame summarizing the Data Quality Report from a dataset.
 ############################################################################
 import pandas
+import numpy as np
 
 
 class DataQualityReport:
@@ -126,7 +127,13 @@ class DataQualityReport:
         meanV = "*"
         medianV = "*"
         n_medianV = "*"
-        modeV = data.mode()[0]
+
+        if cardinalityV == 1 and not data.iat[0] == np.nan:
+            modeV = data.iat[0]
+        elif data.iat[0] == np.nan:
+            modeV = 'nan'
+        else:
+            modeV = data.mode()[0]
         stdDev = "*"
         minV = "*"
         maxV = "*"
