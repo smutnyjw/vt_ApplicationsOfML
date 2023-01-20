@@ -1,5 +1,5 @@
 # vt_ApplicationsOfML
- Homework, Projects, and Libraries associated with the Virginia Tech grad school course ECE-5984 ApplicationsOfMachineLearning instructed by Dr Creed Jones. January 2022 to May 2022.
+Projects and Libraries associated with the Virginia Tech grad school course ECE-5984 ApplicationsOfMachineLearning instructed by Dr Creed Jones. January 2022 to May 2022.
 
 Topics Discussed
 1) Review: Linear Algebra & Statistics
