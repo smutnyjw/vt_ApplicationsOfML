@@ -56,7 +56,7 @@ class DataQualityReport:
 
         # Check to ensure that mathematical methods can work on data.
         numeric = True
-        if type(data[data.first_valid_index()]) == str:
+        if type(data.iat[0]) == str or data.isnull().iat[0]:
             numeric = False
 
         # Only process columns of data that are NUMERIC.
